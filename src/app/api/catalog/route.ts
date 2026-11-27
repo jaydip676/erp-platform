@@ -1,3 +1,4 @@
+import { bustMasters, cachedMaster } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
@@ -8,27 +9,31 @@ import { z } from "zod";
 export async function GET(req: Request) {
   try {
     await requireUser(req);
-    const rows = await prisma.catalogItem.findMany({
-      where: { active: true },
-      orderBy: [{ kind: "asc" }, { category: "asc" }, { srNo: "asc" }],
-    });
     return NextResponse.json(
-      rows.map((r) => ({
-        id: r.id,
-        kind: r.kind,
-        category: r.category,
-        sr_no: r.srNo,
-        size: r.size,
-        valve: r.valve,
-        bag_item: r.bagItem,
-        packing: r.packing,
-        bag_pcs: r.bagPcs,
-        bags: r.bags,
-        domestic_qty: r.domesticQty,
-        export_qty: r.exportQty,
-        weight_kg: r.weightKg,
-        ex_kg: r.exKg,
-      })),
+      await cachedMaster(`m:catalog${new URL(req.url).search}`, async () => {
+      const rows = await prisma.catalogItem.findMany({
+        where: { active: true },
+        orderBy: [{ kind: "asc" }, { category: "asc" }, { srNo: "asc" }],
+      });
+      return (
+        rows.map((r) => ({
+          id: r.id,
+          kind: r.kind,
+          category: r.category,
+          sr_no: r.srNo,
+          size: r.size,
+          valve: r.valve,
+          bag_item: r.bagItem,
+          packing: r.packing,
+          bag_pcs: r.bagPcs,
+          bags: r.bags,
+          domestic_qty: r.domesticQty,
+          export_qty: r.exportQty,
+          weight_kg: r.weightKg,
+          ex_kg: r.exKg,
+        }))
+      );
+      }),
     );
   } catch (e) {
     return jsonError(e);
@@ -128,6 +133,8 @@ export async function PATCH(req: Request) {
     });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -178,6 +185,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: row.id });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -192,5 +201,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }

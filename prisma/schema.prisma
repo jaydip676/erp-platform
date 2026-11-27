@@ -194,6 +194,9 @@ model Batch {
   createdAt      DateTime  @default(now()) @map("created_at")
   vouchers       Voucher[]
 
+  @@index([batchType, status])
+  @@index([parentBatchId])
+
   @@map("batches")
 }
 
@@ -242,6 +245,11 @@ model Voucher {
   stockLedgers StockLedger[]
   rejections   Rejection[]
 
+  @@index([voucherType, voucherDate])
+  @@index([voucherDate])
+  @@index([batchId])
+  @@index([clientId])
+
   @@map("vouchers")
 }
 
@@ -258,6 +266,11 @@ model StockLedger {
   voucher      Voucher    @relation(fields: [voucherId], references: [id])
   department   Department @relation(fields: [departmentId], references: [id])
 
+  // Stock balances are summed per item and department; vouchers read their own lines.
+  @@index([itemType, itemId, departmentId])
+  @@index([departmentId, itemType])
+  @@index([voucherId])
+
   @@map("stock_ledger")
 }
 
@@ -273,6 +286,9 @@ model Rejection {
   voucher        Voucher    @relation(fields: [voucherId], references: [id])
   department     Department @relation(fields: [departmentId], references: [id])
   product        Product?   @relation(fields: [productId], references: [id])
+
+  @@index([voucherId])
+  @@index([rejectionDate])
 
   @@map("rejection_register")
 }
@@ -309,6 +325,9 @@ model PackingConsumption {
   active         Boolean        @default(true)
   qualityGrade   QualityGrade?  @relation(fields: [qualityGradeId], references: [id])
   item           InventoryItem  @relation(fields: [itemId], references: [id])
+
+  @@index([size, active])
+  @@index([itemId])
 
   @@map("packing_consumptions")
 }

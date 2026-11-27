@@ -1,3 +1,4 @@
+import { bustMasters, cachedMaster } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -9,31 +10,35 @@ import { formulaTag } from "@/lib/erp/codes";
 export async function GET(req: Request) {
   try {
     await requireUser(req);
-    const rows = await prisma.recipe.findMany({
-      where: { active: true },
-      include: { items: { include: { material: true } } },
-      orderBy: { code: "asc" },
-    });
     return NextResponse.json(
-      rows.map((r) => ({
-        id: r.id,
-        code: r.code,
-        name: r.name,
-        batch_type: r.batchType,
-        master_kg: r.masterKg,
-        total_kg: r.items.reduce((s, i) => s + Number(i.kgPerBatch), 0),
-        items: r.items.map((i) => ({
-          material_id: i.materialId,
-          code: i.material.code,
-          name: i.material.name,
-          kg: Number(i.kgPerBatch),
-          unit: "KGS",
-          marking: i.marking,
-          size: i.itemSize,
-          quality: i.quality,
-          mfg_use: i.mfgUse,
-        })),
-      })),
+      await cachedMaster(`m:masters/batches${new URL(req.url).search}`, async () => {
+      const rows = await prisma.recipe.findMany({
+        where: { active: true },
+        include: { items: { include: { material: true } } },
+        orderBy: { code: "asc" },
+      });
+      return (
+        rows.map((r) => ({
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          batch_type: r.batchType,
+          master_kg: r.masterKg,
+          total_kg: r.items.reduce((s, i) => s + Number(i.kgPerBatch), 0),
+          items: r.items.map((i) => ({
+            material_id: i.materialId,
+            code: i.material.code,
+            name: i.material.name,
+            kg: Number(i.kgPerBatch),
+            unit: "KGS",
+            marking: i.marking,
+            size: i.itemSize,
+            quality: i.quality,
+            mfg_use: i.mfgUse,
+          })),
+        }))
+      );
+      }),
     );
   } catch (e) {
     return jsonError(e);
@@ -119,6 +124,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: row.id, code: row.code });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -133,6 +140,8 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -193,5 +202,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ id: row.id, code: row.code });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }

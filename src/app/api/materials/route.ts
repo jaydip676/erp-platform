@@ -1,3 +1,4 @@
+import { bustMasters } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
@@ -44,5 +45,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: m.id, code: m.code, name: m.name });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }

@@ -1,3 +1,4 @@
+import { bustMasters, cachedMaster } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -146,13 +147,17 @@ function ensureFixedItems() {
 export async function GET(req: Request) {
   try {
     await requireUser(req);
-    await ensureFixedItems();
-    const rows = await prisma.packingConsumption.findMany({
-      where: { active: true },
-      include,
-      orderBy: [{ size: "asc" }, { qualityGradeId: "asc" }, { item: { name: "asc" } }],
-    });
-    return NextResponse.json(rows.map(toJson));
+    return NextResponse.json(
+      await cachedMaster(`m:masters/packing${new URL(req.url).search}`, async () => {
+      await ensureFixedItems();
+      const rows = await prisma.packingConsumption.findMany({
+        where: { active: true },
+        include,
+        orderBy: [{ size: "asc" }, { qualityGradeId: "asc" }, { item: { name: "asc" } }],
+      });
+      return (rows.map(toJson));
+      }),
+    );
   } catch (e) {
     return jsonError(e);
   }
@@ -176,6 +181,8 @@ export async function POST(req: Request) {
     return NextResponse.json(toJson(row));
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -198,6 +205,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json(toJson(row));
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -214,6 +223,8 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -261,6 +272,8 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: true, rows: data.length });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 

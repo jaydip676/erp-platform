@@ -85,23 +85,17 @@ export function addLedger(
 }
 
 export async function stockSnapshot(db: Db) {
-  const rows = await db.stockLedger.findMany({
-    include: { department: true },
-  });
-  const totals = new Map<string, { itemType: string; itemId: number; department: string; unit: string; balance: number }>();
-  for (const l of rows) {
-    const key = `${l.itemType}|${l.itemId}|${l.department.code}|${l.unit}`;
-    const prev = totals.get(key);
-    const delta = Number(l.qtyIn) - Number(l.qtyOut);
-    if (prev) prev.balance += delta;
-    else
-      totals.set(key, {
-        itemType: l.itemType,
-        itemId: l.itemId,
-        department: l.department.code,
-        unit: l.unit,
-        balance: delta,
-      });
-  }
-  return [...totals.values()];
+  // Summed in the database: one row per item, department and unit, however long the ledger grows.
+  const [sums, depts] = await Promise.all([
+    db.stockLedger.groupBy({ by: ["itemType", "itemId", "departmentId", "unit"], _sum: { qtyIn: true, qtyOut: true } }),
+    db.department.findMany({ select: { id: true, code: true } }),
+  ]);
+  const code = new Map(depts.map((d) => [d.id, d.code]));
+  return sums.map((r) => ({
+    itemType: r.itemType,
+    itemId: r.itemId,
+    department: code.get(r.departmentId) ?? String(r.departmentId),
+    unit: r.unit,
+    balance: Number(r._sum.qtyIn ?? 0) - Number(r._sum.qtyOut ?? 0),
+  }));
 }

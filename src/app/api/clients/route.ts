@@ -1,3 +1,4 @@
+import { bustMasters, cachedMaster } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -19,8 +20,12 @@ async function assertFree(name: string, exceptId?: number) {
 export async function GET(req: Request) {
   try {
     await requirePerm(req, "dispatch.view");
-    const rows = await prisma.client.findMany({ where: { active: true }, orderBy: { name: "asc" } });
-    return NextResponse.json(rows.map(toJson));
+    return NextResponse.json(
+      await cachedMaster(`m:clients${new URL(req.url).search}`, async () => {
+      const rows = await prisma.client.findMany({ where: { active: true }, orderBy: { name: "asc" } });
+      return (rows.map(toJson));
+      }),
+    );
   } catch (e) {
     return jsonError(e);
   }
@@ -34,6 +39,8 @@ export async function POST(req: Request) {
     return NextResponse.json(toJson(await prisma.client.create({ data: b })));
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -46,6 +53,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json(toJson(await prisma.client.update({ where: { id }, data })));
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -58,5 +67,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }

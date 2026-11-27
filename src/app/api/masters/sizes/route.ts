@@ -1,3 +1,4 @@
+import { bustMasters, cachedMaster } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -8,17 +9,21 @@ import { prisma } from "@/lib/prisma";
 export async function GET(req: Request) {
   try {
     await requireUser(req);
-    const rows = await prisma.sizeMaster.findMany({
-      where: { active: true },
-      include: { valves: { orderBy: { valve: "asc" } } },
-      orderBy: { size: "asc" },
-    });
     return NextResponse.json(
-      rows.map((r) => ({
-        id: r.id,
-        size: r.size,
-        valves: r.valves.map((v) => v.valve),
-      })),
+      await cachedMaster(`m:masters/sizes${new URL(req.url).search}`, async () => {
+      const rows = await prisma.sizeMaster.findMany({
+        where: { active: true },
+        include: { valves: { orderBy: { valve: "asc" } } },
+        orderBy: { size: "asc" },
+      });
+      return (
+        rows.map((r) => ({
+          id: r.id,
+          size: r.size,
+          valves: r.valves.map((v) => v.valve),
+        }))
+      );
+      }),
     );
   } catch (e) {
     return jsonError(e);
@@ -47,5 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: row.id, size: row.size, valves: row.valves.map((v) => v.valve) });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }

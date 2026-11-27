@@ -1,3 +1,4 @@
+import { bustMasters, cachedMaster } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -30,9 +31,13 @@ async function syncFromCatalog() {
 export async function GET(req: Request) {
   try {
     await requireUser(req);
-    await syncFromCatalog();
-    const rows = await prisma.productType.findMany({ where: { active: true }, orderBy: { id: "asc" } });
-    return NextResponse.json(rows.map((t) => ({ id: t.id, name: t.name })));
+    return NextResponse.json(
+      await cachedMaster(`m:product-types${new URL(req.url).search}`, async () => {
+      await syncFromCatalog();
+      const rows = await prisma.productType.findMany({ where: { active: true }, orderBy: { id: "asc" } });
+      return (rows.map((t) => ({ id: t.id, name: t.name })));
+      }),
+    );
   } catch (e) {
     return jsonError(e);
   }
@@ -50,6 +55,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: row.id, name: row.name });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -67,5 +74,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true, products_removed: products.count });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }

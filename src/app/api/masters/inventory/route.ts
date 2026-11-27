@@ -1,3 +1,4 @@
+import { bustMasters, cachedMaster } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -131,12 +132,16 @@ async function syncRawMaterial(row: { code: string; name: string; unit: string; 
 export async function GET(req: Request) {
   try {
     await requireUser(req);
-    const group = new URL(req.url).searchParams.get("group");
-    const rows = await prisma.inventoryItem.findMany({
-      where: { active: true, ...(group ? { group } : {}) },
-      orderBy: [{ group: "asc" }, { code: "asc" }],
-    });
-    return NextResponse.json(await withRawId(rows.map(toJson)));
+    return NextResponse.json(
+      await cachedMaster(`m:masters/inventory${new URL(req.url).search}`, async () => {
+      const group = new URL(req.url).searchParams.get("group");
+      const rows = await prisma.inventoryItem.findMany({
+        where: { active: true, ...(group ? { group } : {}) },
+        orderBy: [{ group: "asc" }, { code: "asc" }],
+      });
+      return (await withRawId(rows.map(toJson)));
+      }),
+    );
   } catch (e) {
     return jsonError(e);
   }
@@ -187,6 +192,8 @@ export async function POST(req: Request) {
     return NextResponse.json(toJson(row));
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -225,6 +232,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json(toJson(row));
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -319,5 +328,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }

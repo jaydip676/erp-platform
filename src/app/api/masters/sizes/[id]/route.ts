@@ -1,3 +1,4 @@
+import { bustMasters } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -34,5 +35,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ id: row?.id, size: row?.size, valves: row?.valves.map((v) => v.valve) ?? [] });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }

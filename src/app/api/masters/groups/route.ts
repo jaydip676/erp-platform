@@ -1,3 +1,4 @@
+import { bustMasters, cachedMaster } from "@/lib/server-cache";
 import { requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -17,8 +18,12 @@ function toJson(row: { id: number; code: string; name: string }) {
 export async function GET(req: Request) {
   try {
     await requireUser(req);
-    const rows = await prisma.itemGroup.findMany({ where: { active: true }, orderBy: { code: "asc" } });
-    return NextResponse.json(rows.map(toJson));
+    return NextResponse.json(
+      await cachedMaster(`m:masters/groups${new URL(req.url).search}`, async () => {
+      const rows = await prisma.itemGroup.findMany({ where: { active: true }, orderBy: { code: "asc" } });
+      return (rows.map(toJson));
+      }),
+    );
   } catch (e) {
     return jsonError(e);
   }
@@ -39,6 +44,8 @@ export async function POST(req: Request) {
     return NextResponse.json(toJson(row));
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -61,6 +68,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json(toJson(row));
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
 
@@ -77,5 +86,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     return jsonError(e);
+  } finally {
+    bustMasters();
   }
 }
