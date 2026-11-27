@@ -1,5 +1,6 @@
 "use client";
 
+import { VoucherAdminActions } from "@/components/voucher-admin";
 import { useSubmit } from "@/lib/use-submit";
 import { SkeletonRows } from "@/components/skeleton";
 import { showDate, todayISO } from "@/lib/dates";
@@ -15,7 +16,7 @@ type Wip = { balance: number | null; source_department: string; target_departmen
 type Grade = { id: number; code: string; name: string };
 type PackingRule = { quality_grade_id: number | null; quality_name: string; size: string; item_name: string; unit: string; cons_qty: number };
 type SizeSpec = { weight_kg: number; ex_kg: number };
-type Entry = { voucher_no: string; items: string; brand?: string; output: number; consumed_kg: number; rework_kg: number; repair: number; second: number; scrap: number; notes: string | null; status: string };
+type Entry = { voucher_no: string; items: string; brand?: string; output: number; consumed_kg: number; rework_kg: number; final_weight_kg?: number | null; repair: number; second: number; scrap: number; notes: string | null; status: string };
 
 const STEP_NAME = { extrusion: "Extrusion", curing: "Press", inspection: "Inspection", packing: "Packing" } as const;
 
@@ -28,7 +29,7 @@ const STAGES = [
 
 type StageId = (typeof STAGES)[number][0];
 
-export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[] }: { allowed?: StageId[] }) {
+export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[], admin = false }: { allowed?: StageId[]; admin?: boolean }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [stage, setStage] = useState<StageId>(allowed[0] ?? "extrusion");
@@ -53,6 +54,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[] 
   const [grades, setGrades] = useState<Grade[]>([]);
   const [packingRules, setPackingRules] = useState<PackingRule[]>([]);
   const [gradeId, setGradeId] = useState<number | "">("");
+  const [finalWeight, setFinalWeight] = useState("");
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [posted, setPosted] = useState(0);
   const [waiting, setWaiting] = useState<Record<string, number>>({});
@@ -196,6 +198,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[] 
             revert_kg: stage === "extrusion" ? revertKg : 0,
             repair_qty: stage !== "inspection" ? 0 : repairQty,
             quality_grade_id: stage === "packing" && gradeId !== "" ? Number(gradeId) : null,
+            final_weight_kg: stage === "packing" && Number(finalWeight) > 0 ? Number(finalWeight) : null,
             second_qty: stage !== "inspection" ? 0 : secondQty,
             scrap_qty: stage !== "inspection" ? 0 : scrapQty,
             final_group: stage === "extrusion" ? current?.name : undefined,
@@ -210,6 +213,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[] 
       setResult({ ok: true, text: `${d.voucher_no} posted: ${d.good_qty} PCS moved to ${d.target_department}${rej}${reverted}${used ? `. Deducted ${used}` : ""}${off}.` });
       setPosted((n) => n + 1);
       setNotes("");
+      setFinalWeight("");
       setOutputQty(0);
       setRepairQty(0);
       setSecondQty(0);
@@ -377,6 +381,12 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[] 
             </select>
           </label>
         )}
+        {stage === "packing" && (
+          <label className="erp-label">
+            Final Packing Weight (KG)
+            <input className="erp-input" type="number" inputMode="decimal" step="0.001" min={0} value={finalWeight} placeholder="0" onChange={(e) => setFinalWeight(e.target.value)} />
+          </label>
+        )}
         {stage === "extrusion" ? (
           <label className="erp-label">
             Rework KG
@@ -461,18 +471,20 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[] 
                 <th>Size / valve</th>
                 {stage === "packing" && <th>Brand</th>}
                 <th className="text-right">PCS</th>
+                {stage === "packing" && <th className="text-right">Weight KG</th>}
                 {stage === "extrusion" && <th className="text-right">KG used</th>}
                 {stage === "extrusion" && <th className="text-right">Rework KG</th>}
                 {stage === "inspection" && <th className="text-right">Repair</th>}
                 {stage === "inspection" && <th className="text-right">Second</th>}
                 {stage === "inspection" && <th className="text-right">Scrap</th>}
                 <th>Remarks</th>
+                {admin && <th className="w-28" />}
               </tr>
             </thead>
             <tbody>
               {!entriesReady && <SkeletonRows rows={4} cols={5} />}
               {entriesReady && entries.length === 0 && (
-                <tr><td colSpan={8} className="py-6 text-center text-[#a3a3a3]">Nothing posted for this step on {showDate(processDate)}.</td></tr>
+                <tr><td colSpan={9} className="py-6 text-center text-[#a3a3a3]">Nothing posted for this step on {showDate(processDate)}.</td></tr>
               )}
               {entries.map((e) => (
                 <tr key={e.voucher_no} className={e.status === "VOID" ? "text-[#a3a3a3] line-through" : ""}>
@@ -480,12 +492,22 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[] 
                   <td>{e.items || "–"}</td>
                   {stage === "packing" && <td>{e.brand || "–"}</td>}
                   <td className="text-right tabular-nums">{e.output.toLocaleString("en-IN")}</td>
+                  {stage === "packing" && <td className="text-right tabular-nums">{e.final_weight_kg ?? "–"}</td>}
                   {stage === "extrusion" && <td className="text-right tabular-nums">{e.consumed_kg}</td>}
                   {stage === "extrusion" && <td className="text-right tabular-nums">{e.rework_kg || "–"}</td>}
                   {stage === "inspection" && <td className="text-right tabular-nums">{e.repair || "–"}</td>}
                   {stage === "inspection" && <td className="text-right tabular-nums">{e.second || "–"}</td>}
                   {stage === "inspection" && <td className="text-right tabular-nums">{e.scrap || "–"}</td>}
                   <td className="text-[#737373]">{e.notes || ""}</td>
+                  {admin && (
+                    <td className="text-right no-underline">
+                      <VoucherAdminActions
+                        v={{ ...e, type_code: stage.toUpperCase(), date: processDate, output: e.output }}
+                        onResult={setResult}
+                        onChanged={() => setPosted((n) => n + 1)}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

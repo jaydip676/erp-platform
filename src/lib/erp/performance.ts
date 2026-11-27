@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { departmentItemTotal } from "@/lib/erp/stock";
 import { WIP_DEPARTMENTS } from "@/lib/erp/flow";
 import { SEGMENT_ORDER, segmentForSize } from "@/lib/erp/segments";
 
@@ -108,7 +107,15 @@ export async function getPerformance(from: Date, to: Date) {
   const prevTo = new Date(from.getTime() - 24 * 60 * 60 * 1000);
   const prevFrom = new Date(prevTo.getTime() - span);
 
-  const [rows, previousRows] = await Promise.all([rowsForRange(from, to), rowsForRange(prevFrom, prevTo)]);
+  // Everything is asked in one round of queries: each trip to the database is slow.
+  const [rows, previousRows, depts, deptSums, masterKg, finalKg] = await Promise.all([
+    rowsForRange(from, to),
+    rowsForRange(prevFrom, prevTo),
+    prisma.department.findMany(),
+    prisma.stockLedger.groupBy({ by: ["departmentId"], where: { itemType: "PRODUCT" }, _sum: { qtyIn: true, qtyOut: true } }),
+    prisma.batch.aggregate({ where: { batchType: "MASTER", status: "READY" }, _sum: { availableKg: true } }),
+    prisma.batch.aggregate({ where: { batchType: "FINAL", status: "READY" }, _sum: { availableKg: true } }),
+  ]);
   const kpis = pack(rows);
   const previous = pack(previousRows);
 
@@ -128,19 +135,10 @@ export async function getPerformance(from: Date, to: Date) {
     .map(([valve, units]) => ({ valve, units }))
     .sort((a, b) => b.units - a.units);
 
-  const pipeline = [];
-  for (const [code, name] of WIP_DEPARTMENTS) {
-    const d = await prisma.department.findFirst({ where: { code } });
-    pipeline.push({ code, name, pcs: d ? await departmentItemTotal(prisma, d.id, "PRODUCT") : 0 });
-  }
-
-  const masterKg = await prisma.batch.aggregate({
-    where: { batchType: "MASTER", status: "READY" },
-    _sum: { availableKg: true },
-  });
-  const finalKg = await prisma.batch.aggregate({
-    where: { batchType: "FINAL", status: "READY" },
-    _sum: { availableKg: true },
+  const pipeline = WIP_DEPARTMENTS.map(([code, name]) => {
+    const d = depts.find((x) => x.code === code);
+    const sum = d ? deptSums.find((x) => x.departmentId === d.id)?._sum : undefined;
+    return { code, name, pcs: Number(sum?.qtyIn ?? 0) - Number(sum?.qtyOut ?? 0) };
   });
 
   return {

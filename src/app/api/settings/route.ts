@@ -7,10 +7,11 @@ import { SETTINGS, getSetting, setSetting, type SettingKey } from "@/lib/erp/set
 
 async function all() {
   const out: Record<string, { value: boolean; updated_at: string | null; updated_by: string | null }> = {};
-  for (const key of Object.keys(SETTINGS) as SettingKey[]) {
-    const s = await getSetting(key);
-    out[key] = { value: s.value, updated_at: s.updatedAt, updated_by: s.updatedBy };
-  }
+  const keys = Object.keys(SETTINGS) as SettingKey[];
+  const got = await Promise.all(keys.map((k) => getSetting(k)));
+  keys.forEach((key, i) => {
+    out[key] = { value: got[i].value, updated_at: got[i].updatedAt, updated_by: got[i].updatedBy };
+  });
   return out;
 }
 

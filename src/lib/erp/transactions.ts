@@ -8,6 +8,7 @@ import { DEPARTMENTS, PROCESS_FLOW, WIP_DEPARTMENTS, type Stage } from "@/lib/er
 import { allowedConsumedKg, maxConsumedKg } from "@/lib/erp/extrusion-limit";
 import { getSetting } from "@/lib/erp/settings";
 import type { User } from "@prisma/client";
+import { reverseVoucherTx } from "@/lib/erp/voucher-reverse";
 import { STORE_GROUPS, drawInOrder, finalGroup, formulaTag, masterGroup } from "@/lib/erp/codes";
 
 type Tx = Prisma.TransactionClient;
@@ -34,8 +35,17 @@ export async function nextNo(tx: Tx, kind: "voucher" | "batch", prefix: string, 
   return `${start}${String(max + 1).padStart(4, "0")}`;
 }
 
+// Departments almost never change, so each is looked up once and remembered for a while.
+const deptCache = new Map<string, { d: Awaited<ReturnType<typeof prisma.department.findFirst>> & object; exp: number }>();
 export async function deptByCode(code: string) {
-  const d = await prisma.department.findFirst({ where: { code } });
+  const hit = deptCache.get(code);
+  if (hit && hit.exp > Date.now()) return hit.d;
+  const found = await prisma.department.findFirst({ where: { code } });
+  if (found) {
+    deptCache.set(code, { d: found, exp: Date.now() + 10 * 60_000 });
+    return found;
+  }
+  const d = found;
   if (d) return d;
   // A known department that the database does not have yet (seed not run): create it.
   const known = DEPARTMENTS.find(([c]) => c === code);
@@ -276,8 +286,11 @@ export async function postProcess(
     consumed_kg: number;
     revert_kg?: number;
     quality_grade_id?: number | null;
+    final_weight_kg?: number | null;
     notes?: string;
   },
+  /** Set when an admin edits an entry: that voucher is taken back out first, in the same transaction. */
+  opts?: { replaces?: string },
 ) {
   if (!isStage(stage)) throw new ApiError("Unknown production stage", 404);
   const flow = PROCESS_FLOW[stage];
@@ -320,6 +333,7 @@ export async function postProcess(
   const prefix = stage.slice(0, 3).toUpperCase();
 
   return prisma.$transaction(async (tx) => {
+    if (opts?.replaces) await reverseVoucherTx(tx, user, opts.replaces, "Edited");
     // Final batches are used as one pool, oldest first: batch 1 until it is empty, then batch 2, and so on.
     let drawn: { id: number; kg: number }[] = [];
     const back = new Map<number, number>();
@@ -373,10 +387,15 @@ export async function postProcess(
         repairQty,
         secondQty,
         scrapQty,
-        notes: body.notes ?? null,
+        finalWeightKg: stage === "packing" && body.final_weight_kg ? body.final_weight_kg : null,
+        notes: [body.notes, opts?.replaces ? `Edited from ${opts.replaces}` : null].filter(Boolean).join(" · ") || null,
         createdBy: user.id,
       },
     });
+    if (opts?.replaces) {
+      const old = await tx.voucher.findUnique({ where: { voucherNo: opts.replaces }, select: { id: true, notes: true } });
+      if (old) await tx.voucher.update({ where: { id: old.id }, data: { notes: `${old.notes ?? ""} Replaced by ${v.voucherNo}.`.trim() } });
+    }
 
     if (stage === "extrusion") {
       const finalDept = await deptByCode("FINAL");

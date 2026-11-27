@@ -133,7 +133,11 @@ async function ensureFixedItemsOnce() {
 
 // Requests can arrive together (page load twice in development). Run one at a time so rows are not doubled.
 let ensuring: Promise<void> = Promise.resolve();
+let lastEnsured = 0;
 function ensureFixedItems() {
+  // The check reads several tables; once every few minutes is enough, and saving a rule changes nothing it fixes.
+  if (Date.now() - lastEnsured < 5 * 60_000) return ensuring;
+  lastEnsured = Date.now();
   const run = ensuring.then(ensureFixedItemsOnce);
   ensuring = run.catch(() => undefined);
   return run;

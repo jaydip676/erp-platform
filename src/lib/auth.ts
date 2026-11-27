@@ -59,6 +59,25 @@ export async function getTokenFromRequest(req: Request) {
   return jar.get(COOKIE)?.value ?? null;
 }
 
+// Looking the user up is a database trip, and every page and API call needs it. Keep the answer for a short
+// while; the Users page clears it whenever a user is changed, so edits still apply at once.
+const g = globalThis as unknown as { __userCache?: Map<number, { p: ReturnType<typeof lookupUser>; exp: number }> };
+const userCache = (g.__userCache ??= new Map());
+export function clearUserCache() {
+  userCache.clear();
+}
+function lookupUser(id: number) {
+  return prisma.user.findFirst({ where: { id, active: true, deleted: false } as never });
+}
+function userById(id: number) {
+  const hit = userCache.get(id);
+  if (hit && hit.exp > Date.now()) return hit.p;
+  const p = lookupUser(id);
+  userCache.set(id, { p, exp: Date.now() + 30_000 });
+  p.then((u) => { if (!u) userCache.delete(id); }).catch(() => userCache.delete(id));
+  return p;
+}
+
 export async function getCurrentUser(req?: Request) {
   const token = req ? await getTokenFromRequest(req) : (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
@@ -66,7 +85,7 @@ export async function getCurrentUser(req?: Request) {
     const id = await verifyToken(token);
     if (!id) return null;
     // Disabled or deleted users are signed out on their next request.
-    return prisma.user.findFirst({ where: { id, active: true, deleted: false } as never });
+    return await userById(id);
   } catch {
     return null;
   }

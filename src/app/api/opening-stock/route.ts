@@ -1,4 +1,4 @@
-import { requirePerm } from "@/lib/access";
+import { requireAdmin, requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { jsonError } from "@/lib/api-route";
 import { openingStockSchema } from "@/lib/schemas";
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const u = await requirePerm(req, "masters.opening.edit");
+    const u = await requireAdmin(req);
     const no = new URL(req.url).searchParams.get("no") ?? "";
     return NextResponse.json(await voidOpening(u, no));
   } catch (e) {

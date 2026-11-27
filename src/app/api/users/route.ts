@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clearUserCache } from "@/lib/auth";
 import { z } from "zod";
 import { hashPassword } from "@/lib/auth";
 import { ApiError, jsonError } from "@/lib/api-route";
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
         permissions: body.role === "admin" ? [] : normalizePermissions(body.permissions),
       } as never,
     });
+    clearUserCache();
     return NextResponse.json(toJson(row as unknown as Row));
   } catch (e) {
     return jsonError(e);
@@ -113,6 +115,7 @@ export async function PATCH(req: Request) {
     if (body.password) data.passwordHash = await hashPassword(body.password);
     if (body.permissions) data.permissions = nextRole === "admin" ? [] : normalizePermissions(body.permissions);
     const row = await prisma.user.update({ where: { id: user.id }, data: data as never });
+    clearUserCache();
     return NextResponse.json(toJson(row as unknown as Row));
   } catch (e) {
     return jsonError(e);
@@ -135,6 +138,7 @@ export async function DELETE(req: Request) {
       where: { id },
       data: { deleted: true, active: false, username: `${user.username}~deleted~${id}`, permissions: [] } as never,
     });
+    clearUserCache();
     return NextResponse.json({ ok: true });
   } catch (e) {
     return jsonError(e);

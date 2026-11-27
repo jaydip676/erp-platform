@@ -3,9 +3,9 @@ import type { User } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { ApiError, parseISODate } from "@/lib/api-route";
-import { addLedger, productBalance, r4 } from "@/lib/erp/stock";
+import { addLedger, productBalance, r4, rawMaterialBalance, storeItemBalance } from "@/lib/erp/stock";
 import { deptByCode, nextNo } from "@/lib/erp/transactions";
-import { drawInOrder, finalGroup, masterGroup } from "@/lib/erp/codes";
+import { STORE_GROUPS, drawInOrder, finalGroup, masterGroup } from "@/lib/erp/codes";
 import { itemNamer } from "@/lib/erp/labels";
 import { productName } from "@/lib/erp/product-name";
 
@@ -17,6 +17,8 @@ export const dispatchSchema = z.object({
     .array(
       z.discriminatedUnion("kind", [
         z.object({ kind: z.literal("FG"), product_id: z.number().int(), qty: z.number().int().positive() }),
+        z.object({ kind: z.literal("RAW"), item_id: z.number().int(), qty: z.number().positive() }),
+        z.object({ kind: z.literal("STORE"), item_id: z.number().int(), qty: z.number().positive() }),
         z.object({ kind: z.literal("MASTER"), group: z.string().trim().min(1), kg: z.number().positive() }),
         z.object({ kind: z.literal("FINAL"), group: z.string().trim().min(1), kg: z.number().positive() }),
       ]),
@@ -29,19 +31,27 @@ const groupOf = (kind: "MASTER" | "FINAL", batchNo: string) => (kind === "MASTER
 
 /** What can be dispatched right now: finished goods by size / valve / brand, and batch groups with their KG. */
 export async function dispatchOptions() {
-  const fg = await deptByCode("FG");
-  const rows = await prisma.stockLedger.groupBy({
-    by: ["itemId"],
-    where: { itemType: "PRODUCT", departmentId: fg.id },
-    _sum: { qtyIn: true, qtyOut: true },
-  });
-  const have = new Map(rows.map((r) => [r.itemId, Number(r._sum.qtyIn ?? 0) - Number(r._sum.qtyOut ?? 0)]));
-  const products = await prisma.product.findMany({ where: { id: { in: [...have.keys()] } }, orderBy: [{ size: "asc" }, { valveType: "asc" }, { brand: "asc" }] });
+  const [fg, rawDept, storeDept] = await Promise.all([deptByCode("FG"), deptByCode("RAW"), deptByCode("STORE")]);
+  // Everything that has stock, read in one round of queries (each database trip is slow).
+  const [fgRows, rawRows0, storeRows0, batches] = await Promise.all([
+    prisma.stockLedger.groupBy({ by: ["itemId"], where: { itemType: "PRODUCT", departmentId: fg.id }, _sum: { qtyIn: true, qtyOut: true } }),
+    prisma.stockLedger.groupBy({ by: ["itemId"], where: { itemType: "RAW", departmentId: rawDept.id }, _sum: { qtyIn: true, qtyOut: true } }),
+    prisma.stockLedger.groupBy({ by: ["itemId"], where: { itemType: "STORE", departmentId: storeDept.id }, _sum: { qtyIn: true, qtyOut: true } }),
+    prisma.batch.findMany({ where: { status: "READY", availableKg: { gt: 0 }, batchType: { in: ["MASTER", "FINAL"] } }, orderBy: { id: "asc" } }),
+  ]);
+  const balances = (rows: typeof fgRows) => new Map(rows.map((r) => [r.itemId, r4(Number(r._sum.qtyIn ?? 0) - Number(r._sum.qtyOut ?? 0))]));
+  const have = balances(fgRows);
+  const rawHave = balances(rawRows0);
+  const storeHave = balances(storeRows0);
+  const [products, rawRows, storeRows] = await Promise.all([
+    prisma.product.findMany({ where: { id: { in: [...have.keys()] } }, orderBy: [{ size: "asc" }, { valveType: "asc" }, { brand: "asc" }] }),
+    prisma.rawMaterial.findMany({ where: { id: { in: [...rawHave.keys()] } }, orderBy: { name: "asc" } }),
+    prisma.inventoryItem.findMany({ where: { id: { in: [...storeHave.keys()] }, group: { in: STORE_GROUPS } }, orderBy: { name: "asc" } }),
+  ]);
+
   const finished = products
     .filter((p) => (have.get(p.id) ?? 0) > 0)
     .map((p) => ({ product_id: p.id, size: p.size, valve: p.valveType, brand: p.brand, balance: have.get(p.id) ?? 0 }));
-
-  const batches = await prisma.batch.findMany({ where: { status: "READY", availableKg: { gt: 0 }, batchType: { in: ["MASTER", "FINAL"] } }, orderBy: { id: "asc" } });
   const groups = (kind: "MASTER" | "FINAL") => {
     const m = new Map<string, { group: string; kg: number; batches: number }>();
     for (const b of batches.filter((x) => x.batchType === kind)) {
@@ -53,7 +63,13 @@ export async function dispatchOptions() {
     }
     return [...m.values()].sort((a, b) => a.group.localeCompare(b.group));
   };
-  return { fg: finished, master: groups("MASTER"), final: groups("FINAL") };
+  return {
+    fg: finished,
+    master: groups("MASTER"),
+    final: groups("FINAL"),
+    raw: rawRows.filter((m) => (rawHave.get(m.id) ?? 0) > 0).map((m) => ({ item_id: m.id, name: m.name, unit: "KG", balance: rawHave.get(m.id) ?? 0 })),
+    store: storeRows.filter((i) => (storeHave.get(i.id) ?? 0) > 0).map((i) => ({ item_id: i.id, name: i.name, unit: i.unit || "PCS", group: i.group, balance: storeHave.get(i.id) ?? 0 })),
+  };
 }
 
 /** Sends finished goods and batch KG to a client. Stock leaves the same department it sits in. */
@@ -64,9 +80,13 @@ export async function postDispatch(user: User, body: z.infer<typeof dispatchSche
 
   // The same item listed twice counts once, added together.
   const fgQty = new Map<number, number>();
+  const rawQty = new Map<number, number>();
+  const storeQty = new Map<number, number>();
   const kgByGroup = new Map<string, { kind: "MASTER" | "FINAL"; group: string; kg: number }>();
   for (const l of body.lines) {
     if (l.kind === "FG") fgQty.set(l.product_id, (fgQty.get(l.product_id) ?? 0) + l.qty);
+    else if (l.kind === "RAW") rawQty.set(l.item_id, r4((rawQty.get(l.item_id) ?? 0) + l.qty));
+    else if (l.kind === "STORE") storeQty.set(l.item_id, r4((storeQty.get(l.item_id) ?? 0) + l.qty));
     else {
       const k = `${l.kind}|${l.group}`;
       const cur = kgByGroup.get(k) ?? { kind: l.kind, group: l.group, kg: 0 };
@@ -76,6 +96,8 @@ export async function postDispatch(user: User, body: z.infer<typeof dispatchSche
   }
   const fg = await deptByCode("FG");
   const dept = { MASTER: await deptByCode("MASTER"), FINAL: await deptByCode("FINAL") };
+  const rawDept = await deptByCode("RAW");
+  const storeDept = await deptByCode("STORE");
 
   return prisma.$transaction(
     async (tx) => {
@@ -85,6 +107,21 @@ export async function postDispatch(user: User, body: z.infer<typeof dispatchSche
         if (!p) throw new ApiError("Finished good not found.", 404);
         const bal = await productBalance(tx, id, fg.id);
         if (bal < qty) throw new ApiError(`Only ${bal} PCS of ${productName(p)} are in finished goods stock.`);
+      }
+
+      const rawItems = await tx.rawMaterial.findMany({ where: { id: { in: [...rawQty.keys()] } } });
+      for (const [id, qty] of rawQty) {
+        const m = rawItems.find((x) => x.id === id);
+        if (!m) throw new ApiError("Raw material not found.", 404);
+        const bal = await rawMaterialBalance(tx, id);
+        if (bal + 0.0005 < qty) throw new ApiError(`Only ${Number(bal.toFixed(3))} KG of ${m.name} are in stock.`);
+      }
+      const storeItems = await tx.inventoryItem.findMany({ where: { id: { in: [...storeQty.keys()] }, group: { in: STORE_GROUPS } } });
+      for (const [id, qty] of storeQty) {
+        const it = storeItems.find((x) => x.id === id);
+        if (!it) throw new ApiError("Store item not found.", 404);
+        const bal = await storeItemBalance(tx, id);
+        if (bal + 0.0005 < qty) throw new ApiError(`Only ${Number(bal.toFixed(3))} ${it.unit || "PCS"} of ${it.name} are in stock.`);
       }
 
       const draws: { kind: "MASTER" | "FINAL"; id: number; kg: number; left: number }[] = [];
@@ -115,6 +152,8 @@ export async function postDispatch(user: User, body: z.infer<typeof dispatchSche
         },
       });
       for (const [id, qty] of fgQty) await addLedger(tx, v.id, "PRODUCT", id, fg.id, { qtyOut: qty, unit: "PCS" });
+      for (const [id, qty] of rawQty) await addLedger(tx, v.id, "RAW", id, rawDept.id, { qtyOut: qty, unit: "KG" });
+      for (const [id, qty] of storeQty) await addLedger(tx, v.id, "STORE", id, storeDept.id, { qtyOut: qty, unit: storeItems.find((x) => x.id === id)!.unit || "PCS" });
       for (const d of draws) {
         await tx.batch.update({ where: { id: d.id }, data: { availableKg: d.left, status: d.left <= 0.0005 ? "CONSUMED" : "READY" } });
         await addLedger(tx, v.id, "BATCH", d.id, dept[d.kind].id, { qtyOut: d.kg, unit: "KG" });
@@ -127,13 +166,15 @@ export async function postDispatch(user: User, body: z.infer<typeof dispatchSche
 
 /** Recent dispatches with what was sent, newest first. */
 export async function listDispatches(clientId?: number) {
-  const rows = await prisma.voucher.findMany({
-    where: { voucherType: "DISPATCH", ...(clientId ? { clientId } : {}) },
-    orderBy: { id: "desc" },
-    take: 200,
-    include: { client: true, stockLedgers: { orderBy: { id: "asc" } }, creator: { select: { username: true } } },
-  });
-  const name = await itemNamer();
+  const [rows, name] = await Promise.all([
+    prisma.voucher.findMany({
+      where: { voucherType: "DISPATCH", ...(clientId ? { clientId } : {}) },
+      orderBy: { id: "desc" },
+      take: 200,
+      include: { client: true, stockLedgers: { orderBy: { id: "asc" } }, creator: { select: { username: true } } },
+    }),
+    itemNamer(),
+  ]);
   return rows.map((v) => ({
     voucher_no: v.voucherNo,
     date: v.voucherDate.toISOString().slice(0, 10),

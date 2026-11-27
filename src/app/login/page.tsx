@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="grid min-h-screen place-items-center bg-[#f7f7f7]">
       <form onSubmit={login} className="w-[min(92vw,390px)] rounded-2xl border border-[#e5e5e5] bg-white p-8 shadow-sm">
         <div className="erp-brand">
-          VIAZ <span>TYRES</span>
+          DEMO <span>ERP</span>
         </div>
         <p className="text-sm text-[#737373]">Production & Inventory Management</p>
         <label className="erp-label">Username</label>

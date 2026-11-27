@@ -2,9 +2,10 @@ import { shownUsername } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { ForbiddenError, requireUser } from "@/lib/auth";
-import { can } from "@/lib/access";
+import { can, requireAdmin } from "@/lib/access";
 import { jsonError, parseISODate } from "@/lib/api-route";
 import { prisma } from "@/lib/prisma";
+import { deleteVoucher, editVoucher, voucherEditSchema } from "@/lib/erp/voucher-admin";
 import { ITEM_TYPE_NAME, VOUCHER_TYPE_NAME, itemNamer } from "@/lib/erp/labels";
 
 /**
@@ -30,6 +31,7 @@ function assertVoucherAccess(user: Parameters<typeof can>[0], type: string | nul
   if (!ok) throw new ForbiddenError("You do not have permission to see these vouchers.");
 }
 
+const RECEIPT_TYPES = ["PURCHASE", "STORE_PURCHASE"];
 const fmt = (v: number) => Number(v.toFixed(3)).toLocaleString("en-IN");
 
 /**
@@ -138,6 +140,8 @@ export async function GET(req: Request) {
             names.add(nameOf(l.itemType, l.itemId));
           }
           quantity = [...byUnit].map(([u, n]) => `${fmt(n)} ${u}`).join(" · ");
+          // An edited receipt has an extra correcting line, so its quantity comes from the voucher itself.
+          if (RECEIPT_TYPES.includes(v.voucherType) && v.stockLedgers[0]) quantity = `${fmt(Number(v.inputQty ?? 0))} ${v.stockLedgers[0].unit}`;
           items = [...names].join(", ");
         }
         if (v.product) items = v.product.valveType ? `${v.product.size} / ${v.product.valveType}` : v.product.size;
@@ -150,10 +154,12 @@ export async function GET(req: Request) {
           output,
           consumed_kg: kg,
           rework_kg: Number(v.revertKg ?? 0),
+          final_weight_kg: v.finalWeightKg == null ? null : Number(v.finalWeightKg),
           repair: v.repairQty,
           second: v.secondQty,
           scrap: v.scrapQty,
           quantity,
+          qty: RECEIPT_TYPES.includes(v.voucherType) ? Number(v.inputQty ?? 0) : null,
           items,
           brand: v.product?.brand || [...brands].join(", "),
           notes: v.notes,
@@ -161,6 +167,27 @@ export async function GET(req: Request) {
         };
       }),
     );
+  } catch (e) {
+    return jsonError(e);
+  }
+}
+
+
+/** Admin only: edit a voucher (see editVoucher for what each type allows). */
+export async function PATCH(req: Request) {
+  try {
+    const user = await requireAdmin(req);
+    return NextResponse.json(await editVoucher(user, voucherEditSchema.parse(await req.json())));
+  } catch (e) {
+    return jsonError(e);
+  }
+}
+
+/** Admin only: delete any voucher, ?no=VOUCHER-NO. */
+export async function DELETE(req: Request) {
+  try {
+    const user = await requireAdmin(req);
+    return NextResponse.json(await deleteVoucher(user, new URL(req.url).searchParams.get("no") ?? ""));
   } catch (e) {
     return jsonError(e);
   }

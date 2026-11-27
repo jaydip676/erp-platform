@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { ApiError, jsonError } from "@/lib/api-route";
 import { prisma } from "@/lib/prisma";
 import { PROCESS_FLOW, type Stage } from "@/lib/erp/flow";
-import { departmentItemTotal, productBalance, syncDepartmentNames } from "@/lib/erp/stock";
+import { productBalance, syncDepartmentNames } from "@/lib/erp/stock";
 
 export async function GET(req: Request) {
   try {
@@ -12,12 +12,18 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     if (url.searchParams.get("counts") === "1") {
       // What is waiting for each production step: final batch KG for step 1, pieces for the others.
-      const final = await prisma.batch.aggregate({ where: { batchType: "FINAL", status: "READY" }, _sum: { availableKg: true } });
+      // One round of queries: the final batch KG, the departments, and all departments' tube stock.
+      const [final, depts, sums] = await Promise.all([
+        prisma.batch.aggregate({ where: { batchType: "FINAL", status: "READY" }, _sum: { availableKg: true } }),
+        prisma.department.findMany(),
+        prisma.stockLedger.groupBy({ by: ["departmentId"], where: { itemType: "PRODUCT" }, _sum: { qtyIn: true, qtyOut: true } }),
+      ]);
       const out: Record<string, number> = { extrusion: Number(final._sum.availableKg ?? 0) };
       for (const [st, flow] of Object.entries(PROCESS_FLOW)) {
         if (st === "extrusion") continue;
-        const dept = await prisma.department.findFirst({ where: { code: flow.source } });
-        out[st] = dept ? await departmentItemTotal(prisma, dept.id, "PRODUCT") : 0;
+        const dept = depts.find((d) => d.code === flow.source);
+        const s = dept ? sums.find((x) => x.departmentId === dept.id)?._sum : undefined;
+        out[st] = Number(s?.qtyIn ?? 0) - Number(s?.qtyOut ?? 0);
       }
       return NextResponse.json(out);
     }

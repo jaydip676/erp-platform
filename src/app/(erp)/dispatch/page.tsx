@@ -18,7 +18,7 @@ export default async function DispatchPage() {
   }
   return (
     <ErpShell user={user} title="Dispatch">
-      <DispatchClient canPost={perms.includes("dispatch.post")} canClients={perms.includes("dispatch.clients")} canRemove={perms.includes("dispatch.remove")} />
+      <DispatchClient canPost={perms.includes("dispatch.post")} canClients={perms.includes("dispatch.clients")} canRemove={user.role === "admin"} />
     </ErpShell>
   );
 }

@@ -17,7 +17,18 @@ type Store = {
 // Typed by hand so this works before the Prisma client is regenerated.
 const store = () => (prisma as unknown as { appSetting: Store }).appSetting;
 
+type Got = { value: boolean; updatedAt: string | null; updatedBy: string | null };
+const cached = new Map<string, { got: Got; exp: number }>();
+
 export async function getSetting<K extends SettingKey>(key: K): Promise<{ value: (typeof SETTINGS)[K]; updatedAt: string | null; updatedBy: string | null }> {
+  const hit = cached.get(key);
+  if (hit && hit.exp > Date.now()) return hit.got as { value: (typeof SETTINGS)[K]; updatedAt: string | null; updatedBy: string | null };
+  const got = await readSetting(key);
+  cached.set(key, { got: got as Got, exp: Date.now() + 15_000 });
+  return got;
+}
+
+async function readSetting<K extends SettingKey>(key: K): Promise<{ value: (typeof SETTINGS)[K]; updatedAt: string | null; updatedBy: string | null }> {
   try {
     const row = await store().findUnique({ where: { key } });
     if (!row) return { value: SETTINGS[key], updatedAt: null, updatedBy: null };
@@ -31,4 +42,5 @@ export async function getSetting<K extends SettingKey>(key: K): Promise<{ value:
 export async function setSetting<K extends SettingKey>(key: K, value: (typeof SETTINGS)[K], by: string) {
   const text = JSON.stringify(value);
   await store().upsert({ where: { key }, create: { key, value: text, updatedBy: by }, update: { value: text, updatedBy: by } });
+  cached.delete(key);
 }

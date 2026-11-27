@@ -18,7 +18,7 @@ export default async function ProcessPage() {
   }
   return (
     <ErpShell user={user} title="Production Entry">
-      <ProcessClient allowed={(["extrusion", "curing", "inspection", "packing"] as const).filter((t) => perms.includes(`process.${t}`))} />
+      <ProcessClient admin={user.role === "admin"} allowed={(["extrusion", "curing", "inspection", "packing"] as const).filter((t) => perms.includes(`process.${t}`))} />
     </ErpShell>
   );
 }

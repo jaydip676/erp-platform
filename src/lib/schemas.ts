@@ -58,6 +58,8 @@ export const processSchema = z.object({
   consumed_kg: z.number().min(0).optional().default(0),
   revert_kg: z.number().min(0).optional().default(0),
   quality_grade_id: z.number().int().nullable().optional(),
+  /** Step 4 only: the final packing weight in KG. */
+  final_weight_kg: z.number().min(0).nullable().optional(),
   notes: z.string().optional(),
 });
 

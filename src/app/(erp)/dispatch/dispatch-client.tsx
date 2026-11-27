@@ -12,21 +12,29 @@ import { showDate, todayISO } from "@/lib/dates";
 type Client = { id: number; name: string; phone: string; city: string };
 type FgOption = { product_id: number; size: string; valve: string; brand: string; balance: number };
 type GroupOption = { group: string; kg: number; batches: number };
-type Options = { fg: FgOption[]; master: GroupOption[]; final: GroupOption[] };
+type RawOption = { item_id: number; name: string; unit: string; balance: number };
+type StoreOption = RawOption & { group: string };
+type Options = { fg: FgOption[]; master: GroupOption[]; final: GroupOption[]; raw: RawOption[]; store: StoreOption[] };
 type History = { voucher_no: string; date: string; status: string; client: string; by: string; notes: string | null; lines: { item: string; qty: number; unit: string }[] };
-type Line =
-  | { key: number; kind: "FG"; product_id: number; label: string; qty: number }
-  | { key: number; kind: "MASTER" | "FINAL"; group: string; label: string; kg: number };
-type Kind = "FG" | "MASTER" | "FINAL";
+type FgLine = { key: number; kind: "FG"; product_id: number; label: string; qty: number };
+type BatchLine = { key: number; kind: "MASTER" | "FINAL"; group: string; label: string; kg: number };
+type ItemLine = { key: number; kind: "RAW" | "STORE"; item_id: number; label: string; qty: number; unit: string; what: string };
+type Line = FgLine | BatchLine | ItemLine;
+const isItem = (l: Line): l is ItemLine => l.kind === "RAW" || l.kind === "STORE";
+const isFg = (l: Line): l is FgLine => l.kind === "FG";
+type Kind = "FG" | "MASTER" | "FINAL" | "RAW" | "STORE" | "POUCH";
 
 const KINDS: { id: Kind; label: string }[] = [
   { id: "FG", label: "Finished Goods" },
   { id: "MASTER", label: "Master Batches" },
   { id: "FINAL", label: "Final Batches" },
+  { id: "RAW", label: "Raw Material" },
+  { id: "STORE", label: "Store Material" },
+  { id: "POUCH", label: "Pouch Material" },
 ];
 const byNumber = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
 const fmt = (n: number) => Number(n.toFixed(3)).toLocaleString("en-IN");
-const emptyOptions: Options = { fg: [], master: [], final: [] };
+const emptyOptions: Options = { fg: [], master: [], final: [], raw: [], store: [] };
 
 export function DispatchClient({ canPost, canClients, canRemove }: { canPost: boolean; canClients: boolean; canRemove: boolean }) {
   const confirm = useConfirm();
@@ -47,6 +55,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
   const [valve, setValve] = useState("");
   const [brand, setBrand] = useState("");
   const [group, setGroup] = useState("");
+  const [itemPick, setItemPick] = useState("");
   const [amount, setAmount] = useState("");
 
   // New client
@@ -72,7 +81,8 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
 
   // What is left after the lines already added to this dispatch.
   const usedFg = (id: number) => lines.reduce((s, l) => (l.kind === "FG" && l.product_id === id ? s + l.qty : s), 0);
-  const usedGroup = (k: Kind, g: string) => lines.reduce((s, l) => (l.kind === k && l.kind !== "FG" && l.group === g ? s + l.kg : s), 0);
+  const usedGroup = (k: Kind, g: string) => lines.reduce((s, l) => (l.kind === k && (l.kind === "MASTER" || l.kind === "FINAL") && l.group === g ? s + l.kg : s), 0);
+  const usedItem = (k: "RAW" | "STORE", id: number) => lines.reduce((s, l) => ((l.kind === "RAW" || l.kind === "STORE") && l.kind === k && l.item_id === id ? s + l.qty : s), 0);
 
   const sizes = useMemo(() => [...new Set(options.fg.map((o) => o.size))].sort(byNumber), [options.fg]);
   const valves = useMemo(() => [...new Set(options.fg.filter((o) => o.size === size).map((o) => o.valve))], [options.fg, size]);
@@ -80,18 +90,29 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
   const picked = brands.find((o) => o.brand === brand);
   const groupList = kind === "MASTER" ? options.master : options.final;
   const pickedGroup = groupList.find((g) => g.group === group);
+  const isItemKind = kind === "RAW" || kind === "STORE" || kind === "POUCH";
+  const itemList: RawOption[] = kind === "RAW" ? options.raw : options.store.filter((i) => (kind === "POUCH") === (i.group === "Pouch Item"));
+  const itemKind: "RAW" | "STORE" = kind === "RAW" ? "RAW" : "STORE";
+  const pickedItem = itemList.find((i) => String(i.item_id) === itemPick);
 
-  const left = kind === "FG" ? (picked ? picked.balance - usedFg(picked.product_id) : 0) : pickedGroup ? Number((pickedGroup.kg - usedGroup(kind, pickedGroup.group)).toFixed(3)) : 0;
+  const left = kind === "FG"
+    ? (picked ? picked.balance - usedFg(picked.product_id) : 0)
+    : isItemKind
+      ? (pickedItem ? Number((pickedItem.balance - usedItem(itemKind, pickedItem.item_id)).toFixed(3)) : 0)
+      : pickedGroup ? Number((pickedGroup.kg - usedGroup(kind, pickedGroup.group)).toFixed(3)) : 0;
+  const unitLabel = kind === "FG" ? "PCS" : isItemKind ? (pickedItem?.unit ?? "") : "KG";
   const num = Number(amount);
   const amountOk = kind === "FG" ? Number.isInteger(num) && num > 0 : num > 0;
-  const canAdd = amountOk && (kind === "FG" ? !!picked : !!pickedGroup) && num <= left + 0.0005;
+  const canAdd = amountOk && (kind === "FG" ? !!picked : isItemKind ? !!pickedItem : !!pickedGroup) && num <= left + 0.0005;
 
-  const chooseKind = (k: Kind) => { setKind(k); setSize(""); setValve(""); setBrand(""); setGroup(""); setAmount(""); };
+  const chooseKind = (k: Kind) => { setKind(k); setSize(""); setValve(""); setBrand(""); setGroup(""); setItemPick(""); setAmount(""); };
   const addLine = () => {
     if (!canAdd) return;
     if (kind === "FG" && picked) {
       setLines((cur) => [...cur, { key: Date.now(), kind: "FG", product_id: picked.product_id, label: [picked.size, picked.valve, picked.brand].filter(Boolean).join(" / "), qty: num }]);
-    } else if (kind !== "FG" && pickedGroup) {
+    } else if (isItemKind && pickedItem) {
+      setLines((cur) => [...cur, { key: Date.now(), kind: itemKind, item_id: pickedItem.item_id, label: pickedItem.name, qty: num, unit: pickedItem.unit, what: kind === "RAW" ? "Raw material" : kind === "POUCH" ? "Pouch material" : "Store material" }]);
+    } else if ((kind === "MASTER" || kind === "FINAL") && pickedGroup) {
       setLines((cur) => [...cur, { key: Date.now(), kind, group: pickedGroup.group, label: pickedGroup.group, kg: num }]);
     }
     setAmount("");
@@ -113,7 +134,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
           {lines.map((l) => (
             <li key={l.key} className="flex justify-between gap-4">
               <span>{l.label}</span>
-              <span className="tabular-nums text-[#737373]">{l.kind === "FG" ? `${fmt(l.qty)} PCS` : `${fmt(l.kg)} KG`}</span>
+              <span className="tabular-nums text-[#737373]">{isFg(l) ? `${fmt(l.qty)} PCS` : isItem(l) ? `${fmt(l.qty)} ${l.unit}` : `${fmt(l.kg)} KG`}</span>
             </li>
           ))}
         </ul>
@@ -127,7 +148,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
           date,
           client_id: Number(clientId),
           notes: notes || undefined,
-          lines: lines.map((l) => (l.kind === "FG" ? { kind: "FG", product_id: l.product_id, qty: l.qty } : { kind: l.kind, group: l.group, kg: l.kg })),
+          lines: lines.map((l) => (isFg(l) ? { kind: "FG", product_id: l.product_id, qty: l.qty } : isItem(l) ? { kind: l.kind, item_id: l.item_id, qty: l.qty } : { kind: l.kind, group: l.group, kg: l.kg })),
         }),
       });
       const parts = [d.pcs > 0 ? `${fmt(d.pcs)} PCS` : "", d.kg > 0 ? `${fmt(d.kg)} KG` : ""].filter(Boolean).join(" and ");
@@ -171,7 +192,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
       {canPost && (
         <div className="erp-panel">
           <h2 className="text-lg font-semibold">Dispatch</h2>
-          <p className="erp-hint">Send finished goods and batches to a client. Finished goods go out by size, valve and brand; master and final batches by group, oldest batch first.</p>
+          <p className="erp-hint">Send finished goods, batches and inward materials to a client. Finished goods go out by size, valve and brand; master and final batches by group, oldest batch first; raw, store and pouch materials by item.</p>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <label className="erp-label">
@@ -221,6 +242,19 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
                 </label>
                 <button type="button" className="erp-btn" disabled={!canAdd} onClick={addLine}>Add</button>
               </div>
+            ) : isItemKind ? (
+              <div className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-2 lg:grid-cols-[2fr_9rem_auto] lg:items-end">
+                <label className="erp-label">{kind === "RAW" ? "Raw material" : kind === "POUCH" ? "Pouch material" : "Store material"}
+                  <select className="erp-input" value={itemPick} onChange={(e) => { setItemPick(e.target.value); setAmount(""); }}>
+                    <option value="">{itemList.length ? "Select item" : "Nothing in stock"}</option>
+                    {itemList.map((i) => <option key={i.item_id} value={i.item_id}>{i.name} · {fmt(i.balance - usedItem(itemKind, i.item_id))} {i.unit}</option>)}
+                  </select>
+                </label>
+                <label className="erp-label">Quantity{pickedItem ? ` (${pickedItem.unit})` : ""}
+                  <input className="erp-input text-right" type="number" inputMode="decimal" min={0} step="0.001" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLine(); } }} />
+                </label>
+                <button type="button" className="erp-btn" disabled={!canAdd} onClick={addLine}>Add</button>
+              </div>
             ) : (
               <div className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-2 lg:grid-cols-[2fr_9rem_auto] lg:items-end">
                 <label className="erp-label">{kind === "MASTER" ? "Master batch group" : "Final batch group"}
@@ -235,9 +269,9 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
                 <button type="button" className="erp-btn" disabled={!canAdd} onClick={addLine}>Add</button>
               </div>
             )}
-            {amount && !canAdd && (picked || pickedGroup) && (
+            {amount && !canAdd && (picked || pickedGroup || pickedItem) && (
               <p className="mt-1 text-xs font-semibold text-rose-700">
-                {num > left + 0.0005 ? `Only ${fmt(left)} ${kind === "FG" ? "PCS" : "KG"} are available.` : kind === "FG" ? "Enter whole PCS." : "Enter the KG."}
+                {num > left + 0.0005 ? `Only ${fmt(left)} ${unitLabel} are available.` : kind === "FG" ? "Enter whole PCS." : "Enter the quantity."}
               </p>
             )}
           </div>
@@ -249,8 +283,8 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
                 {lines.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-[#a3a3a3]">Nothing added yet. Choose what to send, enter the quantity and press Add.</td></tr>}
                 {lines.map((l) => (
                   <tr key={l.key}>
-                    <td className="font-medium">{l.label}<span className="block text-xs font-normal text-[#737373]">{l.kind === "FG" ? "Finished goods" : l.kind === "MASTER" ? "Master batch" : "Final batch"}</span></td>
-                    <td className="text-right tabular-nums">{l.kind === "FG" ? `${fmt(l.qty)} PCS` : `${fmt(l.kg)} KG`}</td>
+                    <td className="font-medium">{l.label}<span className="block text-xs font-normal text-[#737373]">{isFg(l) ? "Finished goods" : isItem(l) ? l.what : l.kind === "MASTER" ? "Master batch" : "Final batch"}</span></td>
+                    <td className="text-right tabular-nums">{isFg(l) ? `${fmt(l.qty)} PCS` : isItem(l) ? `${fmt(l.qty)} ${l.unit}` : `${fmt(l.kg)} KG`}</td>
                     <td className="text-right"><button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700" onClick={() => setLines((cur) => cur.filter((x) => x.key !== l.key))}>Remove</button></td>
                   </tr>
                 ))}

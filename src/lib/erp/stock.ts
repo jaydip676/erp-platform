@@ -10,9 +10,7 @@ export async function syncDepartmentNames(db: Db) {
   if (namesSynced) return;
   namesSynced = true;
   try {
-    for (const [code, name] of DEPARTMENTS) {
-      await db.department.updateMany({ where: { code, NOT: { name } }, data: { name } });
-    }
+    await Promise.all(DEPARTMENTS.map(([code, name]) => db.department.updateMany({ where: { code, NOT: { name } }, data: { name } })));
   } catch {
     namesSynced = false;
   }

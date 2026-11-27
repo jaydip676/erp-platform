@@ -18,7 +18,7 @@ export default async function VouchersPage() {
   }
   return (
     <ErpShell user={user} title="Vouchers">
-      <VouchersClient />
+      <VouchersClient admin={user.role === "admin"} />
     </ErpShell>
   );
 }

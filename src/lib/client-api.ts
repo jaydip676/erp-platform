@@ -13,7 +13,34 @@ function tidy(v: unknown): unknown {
   return v;
 }
 
+// Master lists (sizes, items, brands, formulas...) change rarely but are needed by almost every page, and each
+// request is a slow trip to the database. They are remembered for a minute and shared between pages; any
+// save, post or delete made here clears them, so what you just changed always shows at once.
+const MASTER_LISTS = /^\/api\/(catalog|product-types|masters\/(inventory|qualities|groups|batches|packing))(\?.*)?$/;
+const MASTER_TTL = 60_000;
+const remembered = new Map<string, { exp: number; data: Promise<unknown> }>();
+
 export async function api<T = unknown>(path: string, opts: RequestInit = {}): Promise<T> {
+  const method = (opts.method ?? "GET").toUpperCase();
+  if (method === "GET" && !opts.body && MASTER_LISTS.test(path)) {
+    const hit = remembered.get(path);
+    if (hit && hit.exp > Date.now()) return tidy(await hit.data) as T;
+    const data = request(path, opts);
+    remembered.set(path, { exp: Date.now() + MASTER_TTL, data });
+    data.catch(() => remembered.delete(path));
+    return tidy(await data) as T;
+  }
+  if (method !== "GET") {
+    try {
+      return tidy(await request(path, opts)) as T;
+    } finally {
+      remembered.clear();
+    }
+  }
+  return tidy(await request(path, opts)) as T;
+}
+
+async function request(path: string, opts: RequestInit): Promise<unknown> {
   const headers = new Headers(opts.headers);
   if (!headers.has("Content-Type") && opts.body) headers.set("Content-Type", "application/json");
 
@@ -31,5 +58,5 @@ export async function api<T = unknown>(path: string, opts: RequestInit = {}): Pr
     const detail = data && typeof data === "object" && "detail" in data ? String((data as { detail?: unknown }).detail || "") : "";
     throw new ApiClientError(detail || "Request failed");
   }
-  return tidy(data) as T;
+  return data;
 }

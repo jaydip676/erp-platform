@@ -224,6 +224,8 @@ model Voucher {
   outputQty    Decimal   @default(0) @map("output_qty") @db.Decimal(14, 3)
   consumedKg   Decimal   @default(0) @map("consumed_kg") @db.Decimal(14, 3)
   revertKg     Decimal   @default(0) @map("revert_kg") @db.Decimal(14, 3)
+  /// Step 4 Packing: the final packing weight entered with the entry, in KG.
+  finalWeightKg Decimal? @map("final_weight_kg") @db.Decimal(14, 3)
   repairQty    Int       @default(0) @map("repair_qty")
   secondQty    Int       @default(0) @map("second_qty")
   scrapQty     Int       @default(0) @map("scrap_qty")

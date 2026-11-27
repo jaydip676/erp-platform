@@ -71,12 +71,12 @@ export function MobileNav({
           className={`absolute inset-y-0 left-0 flex w-[min(300px,86vw)] flex-col bg-[#f7f7f7] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-2xl transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex items-center gap-2.5 px-2 py-1.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">V</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">D</span>
             <div className="flex-1 leading-tight">
               <div className="erp-brand">
-                VIAZ <span>TYRES</span>
+                DEMO <span>ERP</span>
               </div>
-              <div className="text-[11px] text-[#8a8a8a]">Manufacturing ERP</div>
+              <div className="text-[11px] text-[#8a8a8a]">Production & Inventory</div>
             </div>
             <button type="button" aria-label="Close menu" onClick={() => setOpen(false)} className="grid h-11 w-11 place-items-center rounded-lg text-[#525252] active:bg-[#e8e8e8]">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>

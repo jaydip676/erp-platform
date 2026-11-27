@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
 import { SkeletonRows } from "@/components/skeleton";
 
-type Cell = string | number | null | undefined;
+type Cell = string | number | null | undefined | ReactNode;
 type Props = {
   head: string[];
   rows: Cell[][];

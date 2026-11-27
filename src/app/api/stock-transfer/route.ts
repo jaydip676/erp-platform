@@ -1,4 +1,4 @@
-import { requirePerm } from "@/lib/access";
+import { requireAdmin, requirePerm } from "@/lib/access";
 import { NextResponse } from "next/server";
 import { jsonError } from "@/lib/api-route";
 import { listGreenTransfers, postGreenTransfer, transferSchema, voidGreenTransfer } from "@/lib/erp/transfer";
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const u = await requirePerm(req, "stock.transfer.remove");
+    const u = await requireAdmin(req);
     return NextResponse.json(await voidGreenTransfer(u, new URL(req.url).searchParams.get("no") ?? ""));
   } catch (e) {
     return jsonError(e);

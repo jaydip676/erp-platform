@@ -27,7 +27,6 @@ export const PERMISSION_PAGES: PermPage[] = [
     items: [
       { key: "mixing.master", label: "Master Batch tab", hint: "See and create master batches" },
       { key: "mixing.final", label: "Final Batch tab", hint: "See and create final batches" },
-      { key: "mixing.delete", label: "Delete unused batches" },
     ],
   },
   {
@@ -50,7 +49,6 @@ export const PERMISSION_PAGES: PermPage[] = [
     items: [
       { key: "stock.departments", label: "Department Stock tab" },
       { key: "stock.transfer", label: "Green Tube Transfer tab", hint: "See and post transfers" },
-      { key: "stock.transfer.remove", label: "Remove a Green Tube transfer" },
     ],
   },
   {
@@ -61,7 +59,6 @@ export const PERMISSION_PAGES: PermPage[] = [
     items: [
       { key: "dispatch.post", label: "Post a dispatch", hint: "Send finished goods and batches to a client" },
       { key: "dispatch.clients", label: "Add and edit clients" },
-      { key: "dispatch.remove", label: "Remove a dispatch" },
     ],
   },
   { page: "rejections", label: "Rejections", href: "/rejections", view: "rejections.view", items: [] },
@@ -86,7 +83,7 @@ export const PERMISSION_PAGES: PermPage[] = [
       { key: "masters.qualities.view", label: "Quality (Grade) · view" },
       { key: "masters.qualities.edit", label: "Quality (Grade) · add, edit, delete" },
       { key: "masters.opening.view", label: "Opening Stock · view" },
-      { key: "masters.opening.edit", label: "Opening Stock · post and remove" },
+      { key: "masters.opening.edit", label: "Opening Stock · post" },
     ],
   },
 ];
@@ -105,7 +102,6 @@ export function normalizePermissions(input: unknown): string[] {
     if (page.items.some((i) => set.has(i.key))) set.add(page.view);
   }
   for (const k of [...set]) if (k.startsWith("masters.") && k.endsWith(".edit")) set.add(k.replace(/\.edit$/, ".view"));
-  if (set.has("stock.transfer.remove")) set.add("stock.transfer");
   return ALL_PERMISSIONS.filter((k) => set.has(k));
 }
 

@@ -25,12 +25,12 @@ export function ErpShell({ user, title = "Dashboard", wide = false, bare = false
       <MobileNav title={title} perms={perms} admin={admin} name={name} sub={sub} initials={initials} />
       <aside className="fixed inset-y-0 left-0 hidden w-[240px] flex-col px-3 py-3 lg:flex">
         <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">V</span>
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">D</span>
           <div className="leading-tight">
             <div className="erp-brand">
-              VIAZ <span>TYRES</span>
+              DEMO <span>ERP</span>
             </div>
-            <div className="text-[11px] text-[#8a8a8a]">Manufacturing ERP</div>
+            <div className="text-[11px] text-[#8a8a8a]">Production & Inventory</div>
           </div>
         </div>
         <div className="-mx-1 mt-2 flex-1 overflow-y-auto px-1 pb-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { VoucherAdminActions } from "@/components/voucher-admin";
 import { Tabs } from "@/components/tabs";
 import { PouchNegativeRule } from "@/components/pouch-negative-rule";
 import { todayISO } from "@/lib/dates";
@@ -11,7 +12,7 @@ import { showDate } from "@/lib/dates";
 
 type Tab = "RAW" | "STORE" | "POUCH";
 type Item = { id: number; code: string; name: string; unit: string; stock: number };
-type Receipt = { voucher_no: string; date: string; items: string; quantity: string; status: string };
+type Receipt = { voucher_no: string; type_code: string; date: string; items: string; quantity: string; qty: number | null; notes: string | null; status: string };
 type RawMaterial = { id: number; code: string; name: string; stock_kg: number };
 
 const TABS: { id: Tab; label: string }[] = [
@@ -163,20 +164,6 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
         {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
       </div>
 
-      <div className="erp-panel mb-4">
-        <h2 className="mb-1 text-lg font-semibold">Recent receipts</h2>
-        <p className="erp-hint">The last receipts posted for {tab === "RAW" ? "raw materials" : tab === "POUCH" ? "pouch materials" : "store materials"}.</p>
-        <DataTable
-          head={["Voucher", "Date", "Item", "Quantity", "Status"]}
-          empty="No receipts yet."
-          loading={!receiptsReady}
-          rows={receipts
-            .filter((v) => tab === "RAW" || items.some((i) => v.items.split(", ").includes(i.name)))
-            .slice(0, 15)
-            .map((v) => [v.voucher_no, showDate(v.date), v.items, v.quantity, v.status === "VOID" ? "Deleted" : "Posted"])}
-        />
-      </div>
-
       <div className="erp-panel">
         <h2 className="mb-2 text-lg font-semibold">{tab === "RAW" ? "Raw Material Stock" : tab === "POUCH" ? "Pouch Material Stock" : "Store Material Stock"}</h2>
         {tab === "RAW" ? (
@@ -184,6 +171,22 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
         ) : (
           <DataTable loading={!itemsReady} head={["Code", "Material", "Unit", "Stock"]} rows={items.map((m) => [m.code, m.name, m.unit, m.stock])} />
         )}
+      </div>
+      <div className="erp-panel mt-4">
+        <h2 className="mb-1 text-lg font-semibold">Recent receipts</h2>
+        <p className="erp-hint">The last receipts posted for {tab === "RAW" ? "raw materials" : tab === "POUCH" ? "pouch materials" : "store materials"}.</p>
+        <DataTable
+          head={admin ? ["Voucher", "Date", "Item", "Quantity", "Status", ""] : ["Voucher", "Date", "Item", "Quantity", "Status"]}
+          empty="No receipts yet."
+          loading={!receiptsReady}
+          rows={receipts
+            .filter((v) => tab === "RAW" || items.some((i) => v.items.split(", ").includes(i.name)))
+            .slice(0, 15)
+            .map((v) => {
+              const cells = [v.voucher_no, showDate(v.date), v.items, v.quantity, v.status === "VOID" ? "Deleted" : "Posted"];
+              return admin ? [...cells, <VoucherAdminActions key={v.voucher_no} v={v} onResult={setMsg} onChanged={() => Promise.all([load(), loadReceipts(tab)])} />] : cells;
+            })}
+        />
       </div>
     </>
   );

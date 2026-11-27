@@ -2,6 +2,8 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { SkeletonRows } from "@/components/skeleton";
+import { Banner } from "@/components/banner";
+import { VoucherAdminActions, type ActionResult } from "@/components/voucher-admin";
 import { api } from "@/lib/client-api";
 import { showDate, todayISO } from "@/lib/dates";
 
@@ -14,6 +16,14 @@ type Voucher = {
   items: string;
   notes: string | null;
   status: string;
+  qty: number | null;
+  output: number;
+  repair: number;
+  second: number;
+  scrap: number;
+  consumed_kg: number;
+  rework_kg: number;
+  final_weight_kg: number | null;
 };
 type Detail = {
   voucher_no: string;
@@ -35,6 +45,7 @@ const TYPES: [string, string][] = [
   ["PACKING", "Packing"],
   ["OPENING", "Opening stock"],
   ["DISPATCH", "Dispatch"],
+  ["TRANSFER", "Green tube transfer"],
 ];
 
 const fmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 });
@@ -45,7 +56,7 @@ function addDays(iso: string, n: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export function VouchersClient() {
+export function VouchersClient({ admin = false }: { admin?: boolean }) {
   const today = todayISO();
   const [from, setFrom] = useState(addDays(today, -29));
   const [to, setTo] = useState(today);
@@ -54,6 +65,8 @@ export function VouchersClient() {
   const [rows, setRows] = useState<Voucher[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [detail, setDetail] = useState<Record<string, Detail>>({});
+  const [msg, setMsg] = useState<ActionResult | null>(null);
+  const cols = admin ? 8 : 7;
 
   const load = useCallback(async () => {
     const qs = new URLSearchParams({ limit: "500" });
@@ -83,7 +96,7 @@ export function VouchersClient() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="mb-1 text-lg font-semibold">Vouchers</h2>
-          <p className="erp-hint !mb-0">Click a voucher to see the stock it moved.</p>
+          <p className="erp-hint !mb-0">Click a voucher to see the stock it moved.{admin ? " Only an admin can edit or delete a voucher." : ""}</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="erp-label">
@@ -106,6 +119,7 @@ export function VouchersClient() {
           </label>
         </div>
       </div>
+      {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
       <div className="mt-2 overflow-x-auto">
         <table className="erp-table">
           <thead>
@@ -117,11 +131,12 @@ export function VouchersClient() {
               <th>Item</th>
               <th className="text-right">Quantity</th>
               <th>Status</th>
+              {admin && <th className="w-28" />}
             </tr>
           </thead>
           <tbody>
-            {rows === null && <SkeletonRows rows={8} cols={7} />}
-            {rows?.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-[#a3a3a3]">No vouchers match.</td></tr>}
+            {rows === null && <SkeletonRows rows={8} cols={cols} />}
+            {rows?.length === 0 && <tr><td colSpan={cols} className="py-6 text-center text-[#a3a3a3]">No vouchers match.</td></tr>}
             {rows?.map((v) => {
               const d = detail[v.voucher_no];
               const isOpen = open === v.voucher_no;
@@ -139,11 +154,16 @@ export function VouchersClient() {
                         {v.status === "VOID" ? "Deleted" : "Posted"}
                       </span>
                     </td>
+                    {admin && (
+                      <td className="text-right">
+                        <VoucherAdminActions v={v} onResult={setMsg} onChanged={() => { setDetail({}); setOpen(null); load(); }} />
+                      </td>
+                    )}
                   </tr>
                   {isOpen && (
                     <tr className="bg-[#fafafa] hover:bg-[#fafafa]">
                       <td />
-                      <td colSpan={6} className="pb-4">
+                      <td colSpan={cols - 1} className="pb-4">
                         {!d ? (
                           <span className="text-sm text-[#a3a3a3]">Loading…</span>
                         ) : (
