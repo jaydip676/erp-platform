@@ -411,3 +411,19 @@ textarea.erp-input {
 .erp-date-disabled { background: #f5f5f5; color: #737373; cursor: not-allowed; }
 .erp-date-native { -webkit-appearance: none; appearance: none; font-size: 16px; }
 .erp-date-native::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+/* Dropdown (components/select.tsx): opens with a short fade; on phones a sheet slides up. */
+.erp-select { cursor: pointer; }
+.erp-select:disabled { cursor: not-allowed; }
+@keyframes erp-pop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes erp-sheet-in { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+.erp-pop { animation: erp-pop-in 120ms ease-out; }
+.erp-sheet { animation: erp-sheet-in 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .erp-pop, .erp-sheet { animation: none; } }
+
+/* Auto Consumption Packing on phones: each product is a light card, fields two per line. */
+@media (max-width: 1023.98px) {
+  .erp-pack tbody tr { padding: 12px; margin-bottom: 10px; border: 1px solid #ececec; border-radius: 12px; gap: 10px; }
+  .erp-pack tbody tr.border-t-2 { border-top-width: 1px; }
+  .erp-pack td[data-label]::before { font-size: 11px; margin-bottom: 3px; }
+}

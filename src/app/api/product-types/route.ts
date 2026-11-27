@@ -60,6 +60,30 @@ export async function POST(req: Request) {
   }
 }
 
+/** Renames a type. Its products move to the new name with it. */
+export async function PATCH(req: Request) {
+  try {
+    await requirePerm(req, "masters.products.edit");
+    const body = z.object({ id: z.number().int(), name: z.string().trim().min(1).max(80) }).parse(await req.json());
+    const type = await prisma.productType.findUnique({ where: { id: body.id } });
+    if (!type || !type.active) throw new ApiError("Product type not found", 404);
+    if (type.name === body.name) return NextResponse.json({ id: type.id, name: type.name });
+    const clash = await prisma.productType.findFirst({ where: { id: { not: type.id }, name: { equals: body.name, mode: "insensitive" } } });
+    if (clash?.active) throw new ApiError(`${clash.name} is already a product type.`, 409);
+    await prisma.$transaction(async (tx) => {
+      // A removed type with the same name would block the rename, so it gives up the name.
+      if (clash) await tx.productType.update({ where: { id: clash.id }, data: { name: `${clash.name}~removed~${clash.id}` } });
+      await tx.catalogItem.updateMany({ where: { category: type.name }, data: { category: body.name } });
+      await tx.productType.update({ where: { id: type.id }, data: { name: body.name } });
+    });
+    return NextResponse.json({ id: type.id, name: body.name });
+  } catch (e) {
+    return jsonError(e);
+  } finally {
+    bustMasters();
+  }
+}
+
 /** Removes a type and hides its products. Both are soft-deleted (active = false). */
 export async function DELETE(req: Request) {
   try {

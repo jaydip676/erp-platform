@@ -1,5 +1,9 @@
 "use client";
 
+import { Modal } from "@/components/modal";
+import { AddButton } from "@/components/add-button";
+import { IconAction } from "@/components/icon-action";
+import { Select } from "@/components/select";
 import { DateInput } from "@/components/date-input";
 import { Busy } from "@/components/spinner";
 import { useDateAllowed, useDateLimits } from "@/components/entry-window";
@@ -20,6 +24,7 @@ const byNumber = (a: string, b: string) => a.localeCompare(b, undefined, { numer
 
 export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?: boolean; canDelete?: boolean }) {
   const limits = useDateLimits();
+  const [entering, setEntering] = useState(false);
   const dateOk = useDateAllowed();
   const confirm = useConfirm();
   const [sizes, setSizes] = useState<string[]>([]);
@@ -125,6 +130,7 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
       setMsg({ ok: true, text: `${d.voucher_no} posted: ${pcs} PCS of ${from} moved to ${filled.map((t) => `${t.size} (${t.qty})`).join(", ")}.` });
       setNotes("");
       setFrom("");
+      setEntering(false);
       load();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Could not post. Try again." });
@@ -145,9 +151,10 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
 
   return (
     <div className="space-y-4">
-      {canAdd ? (
-      <div className="erp-panel">
-        <h2 className="text-lg font-semibold">Stock Transfer</h2>
+      {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
+      {canAdd && entering && (
+      <Modal title="New stock transfer" onClose={() => setEntering(false)} busy={posting} size="lg">
+      <div>
         <p className="erp-hint">Moves green tubes (after Step 1) from one size to one or more other sizes. The PCS taken out must equal the PCS added. Usual sizes are suggested first; any other size can be chosen.</p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="erp-label">
@@ -156,12 +163,12 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
           </label>
           <label className="erp-label">
             Transfer from (size)
-            <select className="erp-input" value={from} onChange={(e) => chooseFrom(e.target.value)}>
+            <Select className="erp-input" value={from} onChange={(e) => chooseFrom(e.target.value)}>
               {sources.length === 0 && <option value="">No green tubes in stock</option>}
               {sources.map((s) => (
                 <option key={s} value={s}>{s} · {green.get(s)} PCS</option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="erp-label">
             PCS to transfer
@@ -174,7 +181,7 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
         <div className="mt-2 space-y-2">
           {targets.map((t) => (
             <div key={t.key} className="grid grid-cols-[1fr_9rem_2rem] items-center gap-2 md:max-w-xl">
-              <select className="erp-input m-0" value={t.size} onChange={(e) => update(t.key, { size: e.target.value })}>
+              <Select className="erp-input m-0" value={t.size} onChange={(e) => update(t.key, { size: e.target.value })}>
                 <option value="">Choose size…</option>
                 {suggested.length > 0 && (
                   <optgroup label={`Usual for ${from}`}>
@@ -190,7 +197,7 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </optgroup>
-              </select>
+              </Select>
               <input className="erp-input m-0 text-right" type="number" min={1} step={1} placeholder="PCS" value={t.qty} onChange={(e) => update(t.key, { qty: e.target.value })} />
               <button
                 type="button"
@@ -232,22 +239,20 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
           )}
           {issues.length > 0 && pcs > 0 && <ul className="mt-1 list-disc pl-5 text-xs font-semibold text-rose-700">{issues.map((x) => <li key={x}>{x}</li>)}</ul>}
         </div>
-        {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
         <div className="erp-sticky-bar lg:contents">
           <button type="button" className="erp-btn mt-3" onClick={postOnce} disabled={posting || issues.length > 0}>
             {posting ? <Busy>Posting…</Busy> : "Post transfer"}
           </button>
         </div>
       </div>
-      ) : (
-        <>
-          <p className="erp-hint">You can view transfers only.</p>
-          {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
-        </>
+      </Modal>
       )}
 
       <div className="erp-panel">
-        <h3 className="text-base font-semibold">Recent transfers</h3>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="m-0 text-base font-semibold">Recent transfers</h3>
+          {canAdd ? <AddButton label="New transfer" onClick={() => { setMsg(null); setEntering(true); }} /> : <span className="text-xs text-[#a3a3a3]">View only</span>}
+        </div>
         <div className="overflow-x-auto">
           <table className="erp-table">
             <thead>
@@ -273,7 +278,7 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
                     <td className="text-right tabular-nums">{t.from_qty}</td>
                     <td>{t.to.map((x) => `${x.size} (${x.qty})`).join(", ")}</td>
                     <td className="text-[#737373]">{t.notes}</td>
-                    {canDelete && <td className="text-right">{!voided && dateOk(t.date) && <button type="button" className="text-sm font-semibold text-[#737373] no-underline hover:text-rose-700" onClick={() => remove(t.voucher_no)}>Remove</button>}</td>}
+                    {canDelete && <td className="text-right">{!voided && dateOk(t.date) && <IconAction kind="delete" label="Remove" onClick={() => remove(t.voucher_no)} />}</td>}
                   </tr>
                 );
               })}

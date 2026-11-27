@@ -1,5 +1,7 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
+import { Select } from "@/components/select";
 import { Busy } from "@/components/spinner";
 import { useEffect, useMemo, useState } from "react";
 import { SkeletonRows } from "@/components/skeleton";
@@ -242,10 +244,10 @@ export function UsersClient({ meId }: { meId: number }) {
             </label>
             <label className="erp-label">
               Access
-              <select className="erp-input" value={form.role} disabled={isMe} onChange={(e) => setForm({ ...form, role: e.target.value as Form["role"] })}>
+              <Select className="erp-input" value={form.role} disabled={isMe} onChange={(e) => setForm({ ...form, role: e.target.value as Form["role"] })}>
                 <option value="user">Chosen permissions</option>
                 <option value="admin">Admin (everything + users)</option>
-              </select>
+              </Select>
             </label>
           </div>
           <div className="mt-4">
@@ -327,14 +329,16 @@ export function UsersClient({ meId }: { meId: number }) {
                     </td>
                     <td data-label="Status">{u.active ? <span className="text-xs font-semibold text-emerald-700">Active</span> : <span className="text-xs font-semibold text-rose-700">Disabled</span>}</td>
                     <td className="whitespace-nowrap text-xs text-[#737373]" data-label="Last login">{when(u.last_login_at)}</td>
-                    <td className="erp-stack-full whitespace-nowrap text-right max-lg:flex max-lg:flex-wrap max-lg:items-center max-lg:gap-2 max-lg:[&_.erp-btn]:m-0 max-lg:[&_.erp-btn]:flex-1">
-                      <button type="button" className="erp-btn erp-btn-secondary mr-2" onClick={() => { setMsg(null); setForm({ id: u.id, username: u.username, display_name: u.display_name, password: "", role: u.role, permissions: u.permissions, entry_days: u.entry_days == null ? "" : String(u.entry_days) }); }}>Edit</button>
-                      {u.id !== meId && (
-                        <>
-                          <button type="button" className="erp-btn erp-btn-secondary mr-2" onClick={() => setActive(u, !u.active)}>{u.active ? "Disable" : "Enable"}</button>
-                          <button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700 max-lg:h-11 max-lg:px-3" onClick={() => remove(u)}>Delete</button>
-                        </>
-                      )}
+                    <td className="erp-stack-full whitespace-nowrap text-right">
+                      <div className="inline-flex items-center gap-1 max-lg:-mr-2 max-lg:w-full max-lg:justify-end">
+                        <IconAction kind="edit" label="Edit" onClick={() => { setMsg(null); setForm({ id: u.id, username: u.username, display_name: u.display_name, password: "", role: u.role, permissions: u.permissions, entry_days: u.entry_days == null ? "" : String(u.entry_days) }); }} />
+                        {u.id !== meId && (
+                          <>
+                            <IconAction kind={u.active ? "disable" : "enable"} label={u.active ? "Disable" : "Enable"} onClick={() => setActive(u, !u.active)} />
+                            <IconAction kind="delete" label="Delete" onClick={() => remove(u)} />
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

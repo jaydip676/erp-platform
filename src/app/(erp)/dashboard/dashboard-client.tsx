@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/select";
 import { DateInput } from "@/components/date-input";
 import { Busy } from "@/components/spinner";
 import { todayISO } from "@/lib/dates";
@@ -492,10 +493,10 @@ export function DashboardClient({ perms = [] }: { username: string; role: string
                 <button key={id} type="button" onClick={() => setState(id)} className={`rounded-md px-3 py-1.5 ${state === id ? "bg-white text-[#0a0a0a] shadow-sm" : "text-[#737373] hover:text-[#0a0a0a]"}`}>{label}</button>
               ))}
             </div>
-            <select className="erp-input" style={{ width: 150, height: 36, marginTop: 0 }} value={valve} onChange={(e) => setValve(e.target.value)}>
+            <Select className="erp-input" style={{ width: 150, height: 36, marginTop: 0 }} value={valve} onChange={(e) => setValve(e.target.value)}>
               <option value="all">All valves</option>
               {valves.map((v) => <option key={v} value={v}>{v}</option>)}
-            </select>
+            </Select>
             <input className="erp-input" style={{ width: 200, height: 36, marginTop: 0 }} placeholder="Search size or valve" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
         </div>

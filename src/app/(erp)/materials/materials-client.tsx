@@ -1,5 +1,8 @@
 "use client";
 
+import { Modal } from "@/components/modal";
+import { AddButton } from "@/components/add-button";
+import { Select } from "@/components/select";
 import { DateInput } from "@/components/date-input";
 import { Busy } from "@/components/spinner";
 import { useDateLimits } from "@/components/entry-window";
@@ -33,6 +36,8 @@ function qty(n: number) {
 
 export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = false, perms = [] }: { allowed?: Tab[]; admin?: boolean; perms?: string[] }) {
   const limits = useDateLimits();
+  const [receiving, setReceiving] = useState(false);
+  const [reference, setReference] = useState("");
   const [tab, setTab] = useState<Tab>(allowed[0] ?? "RAW");
   const [raw, setRaw] = useState<Item[]>([]);
   const [store, setStore] = useState<Item[]>([]);
@@ -107,14 +112,16 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
         tab === "RAW"
           ? await api<{ voucher_no: string }>("/api/purchase", {
               method: "POST",
-              body: JSON.stringify({ material_id: selected.id, quantity_kg: amount, date }),
+              body: JSON.stringify({ material_id: selected.id, quantity_kg: amount, date, reference: reference.trim() || undefined }),
             })
           : await api<{ voucher_no: string }>("/api/store-materials", {
               method: "POST",
-              body: JSON.stringify({ store_item_id: selected.id, quantity: amount, date }),
+              body: JSON.stringify({ store_item_id: selected.id, quantity: amount, date, reference: reference.trim() || undefined }),
             });
       setMsg({ ok: true, text: `${d.voucher_no} saved: ${qty(amount)} ${unit} of ${selected.name}` });
       setQuantity("");
+      setReference("");
+      setReceiving(false);
       await Promise.all([load(), loadReceipts(tab)]);
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Failed" });
@@ -129,57 +136,64 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
     <>
       <Tabs className="mb-4" tabs={TABS.filter((t) => allowed.includes(t.id)).map((t) => ({ id: t.id, label: t.label, count: listFor(t.id).length }))} value={tab} onChange={switchTab} />
 
-      {canAdd ? (
-      <div className="erp-panel mb-4">
-        <h2 className="mb-3 text-lg font-semibold">Purchase Receipt</h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <label className="erp-label">
-            {tab === "RAW" ? "Raw Material" : tab === "POUCH" ? "Pouch Material" : "Store Material"}
-            <select
-              className="erp-input"
-              value={itemId[tab]}
-              onChange={(e) => setItemId({ ...itemId, [tab]: Number(e.target.value) })}
-            >
-              {items.length === 0 && <option value="">{tab === "RAW" ? "No Raw Materials in Item Master" : `No items in the ${GROUP_OF[tab]} Group`}</option>}
-              {items.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="erp-label">
-            Quantity {unit}
-            <input
-              className="erp-input"
-              type="number"
-              min={0}
-              step={tab === "RAW" ? "0.001" : "any"}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-            />
-          </label>
-          <label className="erp-label">
-            Date
-            <DateInput className="erp-input" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
-          </label>
-        </div>
-        <div className="erp-sticky-bar lg:contents">
-          <button type="button" className="erp-btn" onClick={post} disabled={busy}>
-            {busy ? <Busy>Posting…</Busy> : "Post Receipt"}
-          </button>
-        </div>
-        {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
-      </div>
-      ) : (
-        <>
-          <p className="erp-hint mb-4">You can view this tab only.</p>
-          {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
-        </>
+      {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
+      {canAdd && receiving && (
+        <Modal title={`New ${tab === "RAW" ? "raw material" : tab === "POUCH" ? "pouch material" : "store material"} receipt`} onClose={() => setReceiving(false)} busy={busy} size="md">
+          <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
+            <label className="erp-label mt-0 sm:col-span-2">
+              {tab === "RAW" ? "Raw Material" : tab === "POUCH" ? "Pouch Material" : "Store Material"}
+              <Select
+                className="erp-input"
+                value={itemId[tab]}
+                onChange={(e) => setItemId({ ...itemId, [tab]: Number(e.target.value) })}
+              >
+                {items.length === 0 && <option value="">{tab === "RAW" ? "No Raw Materials in Item Master" : `No items in the ${GROUP_OF[tab]} Group`}</option>}
+                {items.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </Select>
+              {selected && <span className="mt-1 block text-xs font-normal text-[#737373]">In stock now: {qty(Number(listFor(tab).find((x) => x.id === selected.id)?.stock ?? 0))} {unit}</span>}
+            </label>
+            <label className="erp-label">
+              Quantity {unit}
+              <input
+                className="erp-input"
+                type="number"
+                inputMode="decimal"
+                autoFocus
+                min={0}
+                step={tab === "RAW" ? "0.001" : "any"}
+                placeholder="0"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !busy && post()}
+              />
+            </label>
+            <label className="erp-label">
+              Date
+              <DateInput className="erp-input" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
+            </label>
+            <label className="erp-label sm:col-span-2">
+              Reference
+              <input className="erp-input" placeholder="Optional, e.g. bill / challan no." value={reference} onChange={(e) => setReference(e.target.value)} />
+            </label>
+          </div>
+          <div className="mt-5 flex flex-col-reverse gap-2 border-t border-[#f0f0f0] pt-4 sm:flex-row sm:justify-end [&>button]:m-0">
+            <button type="button" className="erp-btn erp-btn-secondary" onClick={() => setReceiving(false)} disabled={busy}>Cancel</button>
+            <button type="button" className="erp-btn" onClick={post} disabled={busy}>
+              {busy ? <Busy>Posting…</Busy> : "Post receipt"}
+            </button>
+          </div>
+        </Modal>
       )}
 
       <div className="erp-panel">
-        <h2 className="mb-2 text-lg font-semibold">{tab === "RAW" ? "Raw Material Stock" : tab === "POUCH" ? "Pouch Material Stock" : "Store Material Stock"}</h2>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="m-0 text-lg font-semibold">{tab === "RAW" ? "Raw Material Stock" : tab === "POUCH" ? "Pouch Material Stock" : "Store Material Stock"}</h2>
+          {canAdd ? <AddButton label="New receipt" onClick={() => { setMsg(null); setReceiving(true); }} /> : <span className="text-xs text-[#a3a3a3]">View only</span>}
+        </div>
         {tab === "RAW" ? (
           <DataTable loading={!itemsReady} head={["Code", "Material", "Stock KG"]} rows={raw.map((m) => [m.code, m.name, m.stock])} />
         ) : (

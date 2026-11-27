@@ -27,7 +27,7 @@ export function Tabs<T extends string>({
               role="tab"
               aria-selected={on}
               onClick={() => onChange(t.id)}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors lg:py-1.5 ${
+              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-colors lg:px-3.5 ${
                 on ? "bg-white text-[#171717] shadow-[0_1px_2px_rgb(0_0_0/0.12)]" : "text-[#737373] hover:text-[#171717]"
               }`}
             >
@@ -53,7 +53,7 @@ export function Tabs<T extends string>({
             role="tab"
             aria-selected={on}
             onClick={() => onChange(t.id)}
-            className={`shrink-0 whitespace-nowrap rounded-full border font-semibold transition-colors px-4 py-2.5 text-sm lg:py-2 ${
+            className={`shrink-0 whitespace-nowrap rounded-full border font-semibold transition-colors px-3.5 py-2 text-[13px] lg:px-4 lg:text-sm ${
               on ? "border-[#171717] bg-[#171717] text-white" : "border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
             }`}
           >

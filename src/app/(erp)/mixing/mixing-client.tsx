@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/select";
 import { DateInput } from "@/components/date-input";
 import { Busy } from "@/components/spinner";
 import { Notice } from "@/components/notice";
@@ -108,11 +109,11 @@ function LinesTable({
                   {locked ? (
                     m?.name ?? "—"
                   ) : (
-                    <select className="erp-input" value={line.material_id} onChange={(e) => patch(i, { material_id: Number(e.target.value) })}>
+                    <Select className="erp-input" value={line.material_id} onChange={(e) => patch(i, { material_id: Number(e.target.value) })}>
                       {materials.map((x) => (
                         <option key={x.id} value={x.id}>{x.name}</option>
                       ))}
-                    </select>
+                    </Select>
                   )}
                   <div className="mt-0.5 text-[11px] font-semibold sm:hidden">
                     {err ? <span className="text-red-700">{err}</span> : has ? <span className="text-emerald-700">✓ In stock</span> : null}
@@ -397,7 +398,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
         <div className="flex flex-wrap items-end gap-3">
         <label className="erp-label m-0 min-w-[240px] flex-1">
           Master batch formula
-          <select
+          <Select
             className="erp-input"
             value={formulaId}
             onChange={(e) => {
@@ -415,7 +416,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
                 {f.name || f.code} · {kgText(f.total_kg)} KG
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="erp-label m-0 w-28">
           No. of Batch
@@ -535,14 +536,14 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
           <label className="erp-label">
             Master batch
-            <select className="erp-input" value={masterGrp} onChange={(e) => setMasterGrp(e.target.value)}>
+            <Select className="erp-input" value={masterGrp} onChange={(e) => setMasterGrp(e.target.value)}>
               {groups.length === 0 && <option value="">No ready master batch</option>}
               {groups.map((g) => (
                 <option key={g.group} value={g.group}>
                   {g.group} · {kgText(g.available_kg)} KG
                 </option>
               ))}
-            </select>
+            </Select>
             {selected && (
               <span className="mt-1 block text-xs font-normal text-[#737373]">
                 {selected.batches.length} batch{selected.batches.length === 1 ? "" : "es"}: {kgText(selected.available_kg)} KG available
@@ -551,7 +552,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
           </label>
           <label className="erp-label">
             Final batch formula
-            <select
+            <Select
               className="erp-input"
               value={finalFormulaId}
               onChange={(e) => {
@@ -577,7 +578,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
                   {f.name || f.code} · {kgText(f.total_kg)} KG
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="erp-label">
             Final KG per batch

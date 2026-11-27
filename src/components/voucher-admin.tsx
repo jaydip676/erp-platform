@@ -1,5 +1,6 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
 import { DateInput } from "@/components/date-input";
 import { ScrollLock } from "@/lib/use-scroll-lock";
 import { Busy } from "@/components/spinner";
@@ -70,9 +71,9 @@ export function VoucherAdminActions({
 
   return (
     <>
-      <span className="inline-flex gap-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-        {canEdit && <button type="button" className="text-sm font-semibold text-[#525252] hover:text-black" onClick={() => setEditing(true)}>Edit</button>}
-        {canDelete && <button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700" onClick={remove}>Delete</button>}
+      <span className="inline-flex items-center gap-1 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+        {canEdit && <IconAction kind="edit" label="Edit" onClick={() => setEditing(true)} />}
+        {canDelete && <IconAction kind="delete" label="Delete" onClick={remove} />}
       </span>
       {editing && (
         <EditBox

@@ -1,10 +1,12 @@
 "use client";
 
-import { ScrollLock } from "@/lib/use-scroll-lock";
+import { Modal } from "@/components/modal";
+import { AddButton } from "@/components/add-button";
+import { Select } from "@/components/select";
 import { Busy } from "@/components/spinner";
 import { Notice } from "@/components/notice";
 import { useConfirm } from "@/components/confirm";
-import { SkeletonRows } from "@/components/skeleton";
+import { Skeleton, SkeletonRows } from "@/components/skeleton";
 import { useSubmit } from "@/lib/use-submit";
 import { useEffect, useState, type ReactNode } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
@@ -73,6 +75,7 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(EMPTY);
   const [editing, setEditing] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
   const [msg, setMsg] = useState("");
   const [msgError, setMsgError] = useState(false);
 
@@ -90,17 +93,6 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
     load().catch(() => { setRows([]); setReady(true); });
   }, []);
 
-  useEffect(() => {
-    if (!editing) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setEditing(null);
-        setForm(EMPTY);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [editing]);
 
   const itemRows = Array.isArray(rows) ? rows : [];
   const optionNames = (Array.isArray(groupOptions) ? groupOptions : []).map((g) => g.name);
@@ -118,7 +110,29 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
 
   function reset() {
     setEditing(null);
+    setAdding(false);
     setForm(EMPTY);
+  }
+
+  function startEdit(r: Row) {
+      setEditing(r.id);
+      setForm({
+        code: r.code,
+        name: r.name,
+        unit: (INVENTORY_UNITS as readonly string[]).includes(r.unit) ? r.unit as (typeof INVENTORY_UNITS)[number] : "PCS",
+        unit_qty: r.unit_qty || 1,
+        alt_qty: r.alt_qty ?? "",
+        conv_unit: ((INVENTORY_UNITS as readonly string[]).includes(r.conv_unit) ? r.conv_unit : "BAG") as (typeof INVENTORY_UNITS)[number],
+        alt_unit: ((INVENTORY_UNITS as readonly string[]).includes(r.alt_unit) ? r.alt_unit : "PCS") as (typeof INVENTORY_UNITS)[number],
+        marking: r.marking || "",
+        item_size: r.item_size || "",
+        quality: r.quality || "",
+        cons_qty: r.cons_qty || 0,
+        mfg_use: r.mfg_use || "",
+        group: r.group,
+      });
+      setMsg("");
+      setMsgError(false);
   }
 
   const confirm = useConfirm();
@@ -178,7 +192,7 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
   const formBody = (
     <>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-[#171717]">{editing ? `Edit item ${form.code}` : "Add item"}</h2>
+
         <p className="mt-1 text-sm text-[#737373]">Group comes from Group Entry. The code is assigned automatically. Unit starts from the group (Raw Material is KGS, Finished Goods and others are PCS) and you can change it. Alter unit is only for Finished Goods.</p>
       </div>
 
@@ -187,17 +201,17 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
           <input className="erp-input mt-0" placeholder="RECLAIM RUBBER" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </Field>
         <Field label="Group">
-          <select className="erp-input mt-0" value={form.group} onChange={(e) => {
+          <Select className="erp-input mt-0" value={form.group} onChange={(e) => {
             const next = e.target.value;
             setForm({ ...form, group: next, unit: unitForGroup(next) });
           }}>
             {groupOptions.map((g) => <option key={g.id} value={g.name}>{g.name}</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Unit">
-          <select className="erp-input mt-0" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value as (typeof INVENTORY_UNITS)[number] })}>
+          <Select className="erp-input mt-0" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value as (typeof INVENTORY_UNITS)[number] })}>
             {INVENTORY_UNITS.map((u) => <option key={u}>{u}</option>)}
-          </select>
+          </Select>
         </Field>
       </div>
 
@@ -217,9 +231,9 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
               />
             </Field>
             <Field label="Unit" className="w-32">
-              <select className="erp-input mt-0" value={form.conv_unit} onChange={(e) => setForm({ ...form, conv_unit: e.target.value as (typeof INVENTORY_UNITS)[number] })}>
+              <Select className="erp-input mt-0" value={form.conv_unit} onChange={(e) => setForm({ ...form, conv_unit: e.target.value as (typeof INVENTORY_UNITS)[number] })}>
                 {INVENTORY_UNITS.map((u) => <option key={u}>{u}</option>)}
-              </select>
+              </Select>
             </Field>
             <span className="mb-2 px-1 text-lg font-semibold text-[#171717]">=</span>
             <Field label="Qty" className="w-32">
@@ -234,17 +248,16 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
               />
             </Field>
             <Field label="Unit" className="w-32">
-              <select className="erp-input mt-0" value={form.alt_unit} onChange={(e) => setForm({ ...form, alt_unit: e.target.value as (typeof INVENTORY_UNITS)[number] })}>
+              <Select className="erp-input mt-0" value={form.alt_unit} onChange={(e) => setForm({ ...form, alt_unit: e.target.value as (typeof INVENTORY_UNITS)[number] })}>
                 {INVENTORY_UNITS.map((u) => <option key={u}>{u}</option>)}
-              </select>
+              </Select>
             </Field>
           </div>
         </section>
       )}
 
       <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-[#e5e5e5] pt-4">
-        {msg && <Notice text={msg} kind={msgError ? "error" : "success"} onDone={() => setMsg("")} />}
-        {editing && (
+        {(editing || adding) && (
           <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={reset}>Cancel</button>
         )}
         <button type="button" className="erp-btn mt-0" onClick={saveOnce} disabled={saveBusy}>{saveBusy ? <Busy>Saving…</Busy> : editing ? "Save changes" : "Save item"}</button>
@@ -254,22 +267,17 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
 
   return (
     <div className="space-y-4">
-      {canAdd && !editing && <div className="erp-panel">{formBody}</div>}
-      {isAdmin && editing && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[#0a0a0a]/55 backdrop-blur-[2px] sm:items-center sm:p-4"
-          onMouseDown={(e) => e.target === e.currentTarget && reset()}
-        >
-          <ScrollLock />
-          <div role="dialog" aria-modal="true" aria-label="Edit item" className="relative max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl">
-            <button type="button" aria-label="Close" onClick={reset} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-lg text-xl leading-none text-[#737373] hover:bg-[#f5f5f5]">
-              ×
-            </button>
-            {formBody}
-          </div>
-        </div>
+      {msg && <Notice text={msg} kind={msgError ? "error" : "success"} onDone={() => setMsg("")} />}
+      {((isAdmin && editing) || (canAdd && adding)) && (
+        <Modal title={editing ? `Edit item ${form.code}` : "New item"} onClose={reset} busy={saveBusy} size="lg">
+          {formBody}
+        </Modal>
       )}
       <div className="erp-panel overflow-x-auto">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="m-0 text-lg font-semibold">Item Master</h2>
+          {canAdd && <AddButton label="New item" onClick={() => { reset(); setAdding(true); }} />}
+        </div>
         <div className="relative mb-3 w-full">
           <input
             className="erp-input mt-0 w-full pr-10"
@@ -293,7 +301,45 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
             </button>
           ))}
         </div>
-        <table className="erp-table erp-stack">
+        {/* Phones: one compact row per item, with icon buttons. */}
+        <ul className="-mx-1 divide-y divide-[#f0f0f0] lg:hidden">
+          {!ready && [0, 1, 2, 3, 4, 5].map((i) => (
+            <li key={i} className="px-1 py-3"><Skeleton className="h-4 w-2/3" /><Skeleton className="mt-2 h-3 w-1/2" /></li>
+          ))}
+          {ready && shown.length === 0 && (
+            <li className="px-1 py-6 text-center text-sm text-[#737373]">{words.length ? `No items match "${query.trim()}".` : "No items in this group."}</li>
+          )}
+          {shown.map((r) => (
+            <li key={r.id} className="flex items-center gap-3 px-1 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-[#a3a3a3]">#{r.code}</span>
+                  <span className="truncate text-[15px] font-semibold text-[#0a0a0a]">{r.name}</span>
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="rounded-md bg-[#f4f4f5] px-2 py-0.5 font-medium text-[#404040]">{r.unit}</span>
+                  {alterLabel(r) && alterLabel(r) !== "—" && <span className="rounded-md bg-[#f4f4f5] px-2 py-0.5 text-[#525252]">{alterLabel(r)}</span>}
+                  <span className="text-[#737373]">{r.group}</span>
+                </div>
+              </div>
+              {(isAdmin || canDelete) && (
+                <div className="flex shrink-0 items-center gap-1">
+                  {isAdmin && (
+                    <button type="button" aria-label={`Edit ${r.name}`} title="Edit item" onClick={() => startEdit(r)} className="grid h-10 w-10 place-items-center rounded-lg text-[#404040] active:bg-[#f4f4f5]">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button type="button" aria-label={`Delete ${r.name}`} title="Delete item" onClick={() => remove(r)} className="grid h-10 w-10 place-items-center rounded-lg text-[#dc2626] active:bg-[#fef2f2]">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
+                    </button>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+        <table className="erp-table max-lg:!hidden">
           <thead>
             <tr>
               {["Material Code", "Material Name", "Unit", "Alter Unit", "Group", ""].map((h) => <th key={h || "edit"}>{h}</th>)}
@@ -310,38 +356,19 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
             )}
             {shown.map((r) => (
               <tr key={r.id}>
-                <td className="font-semibold max-lg:col-span-2 max-lg:text-[15px]"><span className="mr-2 text-[#a3a3a3] lg:hidden">#{r.code}</span><span className="hidden lg:inline">{r.code}</span><span className="lg:hidden">{r.name}</span></td>
-                <td className="max-lg:!hidden">{r.name}</td>
+                <td className="font-semibold">{r.code}</td>
+                <td>{r.name}</td>
                 <td data-label="Unit">{r.unit}</td>
                 <td data-label="Alter Unit">{alterLabel(r)}</td>
                 <td className="erp-stack-full" data-label="Group">{r.group}</td>
                 <td className="erp-stack-full">
                   {(isAdmin || canDelete) && (
-                    <div className="flex items-center gap-2 max-lg:[&_.erp-btn]:flex-1">
+                    <div className="flex items-center gap-2">
                     {isAdmin && (
                     <button
                       type="button"
                       className="erp-btn erp-btn-secondary mt-0"
-                      onClick={() => {
-                        setEditing(r.id);
-                        setForm({
-                          code: r.code,
-                          name: r.name,
-                          unit: (INVENTORY_UNITS as readonly string[]).includes(r.unit) ? r.unit as (typeof INVENTORY_UNITS)[number] : "PCS",
-                          unit_qty: r.unit_qty || 1,
-                          alt_qty: r.alt_qty ?? "",
-                          conv_unit: ((INVENTORY_UNITS as readonly string[]).includes(r.conv_unit) ? r.conv_unit : "BAG") as (typeof INVENTORY_UNITS)[number],
-                          alt_unit: ((INVENTORY_UNITS as readonly string[]).includes(r.alt_unit) ? r.alt_unit : "PCS") as (typeof INVENTORY_UNITS)[number],
-                          marking: r.marking || "",
-                          item_size: r.item_size || "",
-                          quality: r.quality || "",
-                          cons_qty: r.cons_qty || 0,
-                          mfg_use: r.mfg_use || "",
-                          group: r.group,
-                        });
-                        setMsg("");
-                        setMsgError(false);
-                      }}
+                      onClick={() => startEdit(r)}
                     >
                       Edit
                     </button>

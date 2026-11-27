@@ -1,5 +1,8 @@
 "use client";
 
+import { Modal } from "@/components/modal";
+import { IconAction } from "@/components/icon-action";
+import { Select } from "@/components/select";
 import { DateInput } from "@/components/date-input";
 import { ScrollLock } from "@/lib/use-scroll-lock";
 import { Busy } from "@/components/spinner";
@@ -62,6 +65,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [picking, setPicking] = useState(false);
 
   // Line picker
   const [kind, setKind] = useState<Kind>(editKinds[0]?.id ?? "FG");
@@ -137,6 +141,13 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
   if (lines.length === 0) issues.push("Add at least one item.");
 
   const [postOnce, posting] = useSubmit(post);
+  // Picker popup: adds the line and closes, so the list below shows what was added.
+  function addAndClose() {
+    if (!canAdd) return;
+    addLine();
+    setPicking(false);
+  }
+
   async function post() {
     if (issues.length) return;
     const client = clients.find((c) => c.id === clientId);
@@ -203,6 +214,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
 
   return (
     <div className="space-y-4">
+      {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
       {canPost && (
         <div className="erp-panel">
           <h2 className="text-lg font-semibold">Dispatch</h2>
@@ -215,10 +227,10 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
             </label>
             <label className="erp-label">
               Client
-              <select className="erp-input" value={clientId} onChange={(e) => setClientId(e.target.value ? Number(e.target.value) : "")}>
+              <Select className="erp-input" value={clientId} onChange={(e) => setClientId(e.target.value ? Number(e.target.value) : "")}>
                 <option value="">Select client</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.name}{c.city ? ` · ${c.city}` : ""}</option>)}
-              </select>
+              </Select>
               {canClients && !adding && (
                 <button type="button" className="mt-1 text-left text-xs font-semibold text-[#525252] hover:text-black" onClick={() => setAdding(true)}>+ New client</button>
               )}
@@ -231,62 +243,75 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
 
           <div className="mt-5">
             <Tabs size="sm" tabs={editKinds.map((k) => ({ id: k.id, label: k.label }))} value={kind} onChange={(id) => chooseKind(id as Kind)} className="mb-3" />
-            {kind === "FG" ? (
-              <div className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_8rem_auto] lg:items-end">
-                <label className="erp-label">Size
-                  <select className="erp-input" value={size} onChange={(e) => { const s = e.target.value; setSize(s); setBrand(""); const v = [...new Set(options.fg.filter((o) => o.size === s).map((o) => o.valve))]; setValve(v.length === 1 ? v[0] : ""); setAmount(""); }}>
-                    <option value="">{sizes.length ? "Select size" : "No finished goods in stock"}</option>
-                    {sizes.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </label>
-                <label className="erp-label">Valve
-                  <select className="erp-input" value={valve} disabled={!size} onChange={(e) => { setValve(e.target.value); setBrand(""); }}>
-                    <option value="">{size ? "Select valve" : "Select size first"}</option>
-                    {valves.map((v) => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </label>
-                <label className="erp-label">Brand
-                  <select className="erp-input" value={brand} disabled={!valve} onChange={(e) => setBrand(e.target.value)}>
-                    <option value="">{valve ? "Select brand" : "Select valve first"}</option>
-                    {brands.map((o) => <option key={o.product_id} value={o.brand}>{o.brand || "No brand"} · {fmt(o.balance - usedFg(o.product_id))} PCS</option>)}
-                  </select>
-                </label>
-                <label className="erp-label">PCS
-                  <input className="erp-input text-right" type="number" inputMode="numeric" min={1} step={1} placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLine(); } }} />
-                </label>
-                <button type="button" className="erp-btn" disabled={!canAdd} onClick={addLine}>Add</button>
-              </div>
-            ) : isItemKind ? (
-              <div className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-2 lg:grid-cols-[2fr_9rem_auto] lg:items-end">
-                <label className="erp-label">{kind === "RAW" ? "Raw material" : kind === "POUCH" ? "Pouch material" : "Store material"}
-                  <select className="erp-input" value={itemPick} onChange={(e) => { setItemPick(e.target.value); setAmount(""); }}>
-                    <option value="">{itemList.length ? "Select item" : "Nothing in stock"}</option>
-                    {itemList.map((i) => <option key={i.item_id} value={i.item_id}>{i.name} · {fmt(i.balance - usedItem(itemKind, i.item_id))} {i.unit}</option>)}
-                  </select>
-                </label>
-                <label className="erp-label">Quantity{pickedItem ? ` (${pickedItem.unit})` : ""}
-                  <input className="erp-input text-right" type="number" inputMode="decimal" min={0} step="0.001" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLine(); } }} />
-                </label>
-                <button type="button" className="erp-btn" disabled={!canAdd} onClick={addLine}>Add</button>
-              </div>
-            ) : (
-              <div className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-2 lg:grid-cols-[2fr_9rem_auto] lg:items-end">
-                <label className="erp-label">{kind === "MASTER" ? "Master batch group" : "Final batch group"}
-                  <select className="erp-input" value={group} onChange={(e) => { setGroup(e.target.value); setAmount(""); }}>
-                    <option value="">{groupList.length ? "Select group" : "No batches in stock"}</option>
-                    {groupList.map((g) => <option key={g.group} value={g.group}>{g.group} · {fmt(g.kg - usedGroup(kind, g.group))} KG</option>)}
-                  </select>
-                </label>
-                <label className="erp-label">KG
-                  <input className="erp-input text-right" type="number" inputMode="decimal" min={0} step="0.001" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLine(); } }} />
-                </label>
-                <button type="button" className="erp-btn" disabled={!canAdd} onClick={addLine}>Add</button>
-              </div>
-            )}
-            {amount && !canAdd && (picked || pickedGroup || pickedItem) && (
-              <p className="mt-1 text-xs font-semibold text-rose-700">
-                {num > left + 0.0005 ? `Only ${fmt(left)} ${unitLabel} are available.` : kind === "FG" ? "Enter whole PCS." : "Enter the quantity."}
-              </p>
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[#d4d4d4] bg-[#fafafa] px-4 py-3 text-sm font-semibold text-[#171717] hover:bg-[#f4f4f5]"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>
+              Add {(KINDS.find((k) => k.id === kind)?.label ?? "item").toLowerCase()}
+            </button>
+            {picking && (
+              <Modal title={`Add ${(KINDS.find((k) => k.id === kind)?.label ?? "item").toLowerCase()}`} onClose={() => setPicking(false)} size="md">
+                {kind === "FG" ? (
+                  <div className="grid gap-x-3 sm:grid-cols-2">
+                    <label className="erp-label">Size
+                      <Select className="erp-input" value={size} onChange={(e) => { const s = e.target.value; setSize(s); setBrand(""); const v = [...new Set(options.fg.filter((o) => o.size === s).map((o) => o.valve))]; setValve(v.length === 1 ? v[0] : ""); setAmount(""); }}>
+                        <option value="">{sizes.length ? "Select size" : "No finished goods in stock"}</option>
+                        {sizes.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </Select>
+                    </label>
+                    <label className="erp-label">Valve
+                      <Select className="erp-input" value={valve} disabled={!size} onChange={(e) => { setValve(e.target.value); setBrand(""); }}>
+                        <option value="">{size ? "Select valve" : "Select size first"}</option>
+                        {valves.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </Select>
+                    </label>
+                    <label className="erp-label">Brand
+                      <Select className="erp-input" value={brand} disabled={!valve} onChange={(e) => setBrand(e.target.value)}>
+                        <option value="">{valve ? "Select brand" : "Select valve first"}</option>
+                        {brands.map((o) => <option key={o.product_id} value={o.brand}>{o.brand || "No brand"} · {fmt(o.balance - usedFg(o.product_id))} PCS</option>)}
+                      </Select>
+                    </label>
+                    <label className="erp-label">PCS
+                      <input className="erp-input text-right" autoFocus={false} type="number" inputMode="numeric" min={1} step={1} placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAndClose(); } }} />
+                    </label>
+                  </div>
+                ) : isItemKind ? (
+                  <div className="grid gap-x-3 sm:grid-cols-2">
+                    <label className="erp-label">{kind === "RAW" ? "Raw material" : kind === "POUCH" ? "Pouch material" : "Store material"}
+                      <Select className="erp-input" value={itemPick} onChange={(e) => { setItemPick(e.target.value); setAmount(""); }}>
+                        <option value="">{itemList.length ? "Select item" : "Nothing in stock"}</option>
+                        {itemList.map((i) => <option key={i.item_id} value={i.item_id}>{i.name} · {fmt(i.balance - usedItem(itemKind, i.item_id))} {i.unit}</option>)}
+                      </Select>
+                    </label>
+                    <label className="erp-label">Quantity{pickedItem ? ` (${pickedItem.unit})` : ""}
+                      <input className="erp-input text-right" autoFocus={false} type="number" inputMode="decimal" min={0} step="0.001" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAndClose(); } }} />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="grid gap-x-3 sm:grid-cols-2">
+                    <label className="erp-label">{kind === "MASTER" ? "Master batch group" : "Final batch group"}
+                      <Select className="erp-input" value={group} onChange={(e) => { setGroup(e.target.value); setAmount(""); }}>
+                        <option value="">{groupList.length ? "Select group" : "No batches in stock"}</option>
+                        {groupList.map((g) => <option key={g.group} value={g.group}>{g.group} · {fmt(g.kg - usedGroup(kind, g.group))} KG</option>)}
+                      </Select>
+                    </label>
+                    <label className="erp-label">KG
+                      <input className="erp-input text-right" autoFocus={false} type="number" inputMode="decimal" min={0} step="0.001" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAndClose(); } }} />
+                    </label>
+                  </div>
+                )}
+                {amount && !canAdd && (picked || pickedGroup || pickedItem) && (
+                  <p className="mt-1 text-xs font-semibold text-rose-700">
+                    {num > left + 0.0005 ? `Only ${fmt(left)} ${unitLabel} are available.` : kind === "FG" ? "Enter whole PCS." : "Enter the quantity."}
+                  </p>
+                )}
+                <div className="mt-5 flex flex-col-reverse gap-2 border-t border-[#f0f0f0] pt-4 sm:flex-row sm:justify-end [&>button]:m-0">
+                  <button type="button" className="erp-btn erp-btn-secondary" onClick={() => setPicking(false)}>Cancel</button>
+                  <button type="button" className="erp-btn" disabled={!canAdd} onClick={addAndClose}>Add to dispatch</button>
+                </div>
+              </Modal>
             )}
           </div>
 
@@ -299,7 +324,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
                   <tr key={l.key}>
                     <td className="font-medium">{l.label}<span className="block text-xs font-normal text-[#737373]">{isFg(l) ? "Finished goods" : isItem(l) ? l.what : l.kind === "MASTER" ? "Master batch" : "Final batch"}</span></td>
                     <td className="text-right tabular-nums">{isFg(l) ? `${fmt(l.qty)} PCS` : isItem(l) ? `${fmt(l.qty)} ${l.unit}` : `${fmt(l.kg)} KG`}</td>
-                    <td className="text-right"><button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700" onClick={() => setLines((cur) => cur.filter((x) => x.key !== l.key))}>Remove</button></td>
+                    <td className="text-right"><IconAction kind="delete" label="Remove" onClick={() => setLines((cur) => cur.filter((x) => x.key !== l.key))} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -314,15 +339,16 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
         </div>
       )}
 
-      {!canPost && msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
 
       <div className="erp-panel">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-base font-semibold">Dispatches</h3>
-          <select className="erp-input m-0 w-auto" value={filter} onChange={(e) => { setFilter(e.target.value); load(e.target.value); }}>
-            <option value="">All clients</option>
-            {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <h3 className="m-0 text-base font-semibold">Dispatches</h3>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Select className="erp-input m-0 min-w-0 flex-1 sm:w-48 sm:flex-none" value={filter} onChange={(e) => { setFilter(e.target.value); load(e.target.value); }}>
+              <option value="">All clients</option>
+              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+          </div>
         </div>
         <div className="mt-2 overflow-x-auto">
           <table className="erp-table">
@@ -341,7 +367,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
                     <td>{h.client}</td>
                     <td>{h.lines.map((l) => `${l.item} (${fmt(l.qty)} ${l.unit})`).join(", ")}</td>
                     <td className="text-[#737373]">{h.notes}</td>
-                    {anyRemove && <td className="text-right">{canRemove(h) && <button type="button" className="text-sm font-semibold text-[#737373] no-underline hover:text-rose-700" onClick={() => remove(h.voucher_no)}>Remove</button>}</td>}
+                    {anyRemove && <td className="text-right">{canRemove(h) && <IconAction kind="delete" label="Remove" onClick={() => remove(h.voucher_no)} />}</td>}
                   </tr>
                 );
               })}

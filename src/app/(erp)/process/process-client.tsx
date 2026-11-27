@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/components/select";
 import { DateInput } from "@/components/date-input";
 import { Busy } from "@/components/spinner";
 import { VoucherAdminActions } from "@/components/voucher-admin";
@@ -299,12 +300,12 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
         {stage === "extrusion" && (
             <label className="erp-label">
               Final batch group
-              <select className="erp-input" value={current?.name ?? ""} onChange={(e) => setGroup(e.target.value)}>
+              <Select className="erp-input" value={current?.name ?? ""} onChange={(e) => setGroup(e.target.value)}>
                 {groups.length === 0 && <option value="">No ready final batch</option>}
                 {groups.map((g) => (
                   <option key={g.name} value={g.name}>{g.name} · {g.kg} KG</option>
                 ))}
-              </select>
+              </Select>
               {current && (
                 <span className="mt-1 block text-xs font-normal normal-case tracking-normal text-[#737373]">
                   Combined {current.kg} KG. Used oldest first, starting with {current.first}.
@@ -315,17 +316,17 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
         {stage === "extrusion" || stage === "curing" ? (
           <label className="erp-label">
             Size
-            <select className="erp-input" value={size} onChange={(e) => setSize(e.target.value)}>
+            <Select className="erp-input" value={size} onChange={(e) => setSize(e.target.value)}>
               {sizes.length === 0 && <option value="">No sizes in Finished Goods</option>}
               {sizes.map((name) => (
                 <option key={name} value={name}>{name}</option>
               ))}
-            </select>
+            </Select>
           </label>
         ) : (
           <label className="erp-label">
             Size / valve
-            <select className="erp-input" value={productId} onChange={(e) => setProductId(Number(e.target.value))}>
+            <Select className="erp-input" value={productId} onChange={(e) => setProductId(Number(e.target.value))}>
               {stageProducts.length === 0 && <option value="">{stage === "packing" ? "No inspected pieces waiting" : "No pressed pieces waiting"}</option>}
               {stageProducts.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -333,7 +334,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
                   {chained && "balance" in p ? ` · ${(p as { balance: number }).balance} PCS` : ""}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {stage === "extrusion" && (
@@ -370,12 +371,12 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
           <>
             <label className="erp-label">
               Valve
-              <select className="erp-input" value={valve} onChange={(e) => setValve(e.target.value)}>
+              <Select className="erp-input" value={valve} onChange={(e) => setValve(e.target.value)}>
                 {valveOptions.length === 0 && <option value="">No valves for this size</option>}
                 {valveOptions.map((name) => (
                   <option key={name} value={name}>{name}</option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="erp-label">
               Weight
@@ -396,11 +397,11 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
         {stage === "packing" && (
           <label className="erp-label">
             Brand
-            <select className="erp-input" value={gradeId} onChange={(e) => setGradeId(Number(e.target.value))}>
+            <Select className="erp-input" value={gradeId} onChange={(e) => setGradeId(Number(e.target.value))}>
               {grades.map((grade) => (
                 <option key={grade.id} value={grade.id}>{grade.name}</option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {stage === "packing" && (

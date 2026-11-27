@@ -1,5 +1,8 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
+import { Modal } from "@/components/modal";
+import { AddButton } from "@/components/add-button";
 import { ScrollLock } from "@/lib/use-scroll-lock";
 import { Busy } from "@/components/spinner";
 import { Notice } from "@/components/notice";
@@ -73,7 +76,8 @@ export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin 
   const [types, setTypes] = useState<ProductType[]>([]);
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [tab, setTab] = useState("all");
-  const [addingType, setAddingType] = useState(false);
+  const [managing, setManaging] = useState(false);
+  const [renaming, setRenaming] = useState<{ id: number; name: string } | null>(null);
   const [typeName, setTypeName] = useState("");
   const [typeError, setTypeError] = useState("");
   const [query, setQuery] = useState("");
@@ -221,7 +225,6 @@ export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin 
   }
 
   function closeAddType() {
-    setAddingType(false);
     setTypeName("");
     setTypeError("");
   }
@@ -241,11 +244,28 @@ export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin 
     }
     try {
       const created = await createType(name);
-      setTab(created.name);
       setMsg(`${created.name} added`);
-      closeAddType();
+      setTypeName("");
     } catch (e) {
       setTypeError(e instanceof ApiClientError ? e.message : "Could not add type");
+    }
+  }
+
+  const [renameOnce, renameBusy] = useSubmit(renameType);
+  async function renameType() {
+    if (!renaming) return;
+    const name = renaming.name.trim();
+    if (!name) return setTypeError("Enter a product type name.");
+    const old = types.find((t) => t.id === renaming.id);
+    try {
+      const r = await api<ProductType>("/api/product-types", { method: "PATCH", body: JSON.stringify({ id: renaming.id, name }) });
+      setTypes((list) => list.map((t) => (t.id === r.id ? r : t)));
+      if (old) setItems((list) => list.map((i) => (i.category === old.name ? { ...i, category: r.name } : i)));
+      if (old && tab === old.name) setTab(r.name);
+      setRenaming(null);
+      setMsg(`Renamed to ${r.name}`);
+    } catch (e) {
+      setTypeError(e instanceof ApiClientError ? e.message : "Could not rename type");
     }
   }
 
@@ -276,7 +296,7 @@ export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin 
           type="button"
           role="tab"
           aria-selected={tab === "all"}
-          className={`shrink-0 whitespace-nowrap rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors lg:py-1.5 ${tab === "all" ? "bg-white text-[#171717] shadow-[0_1px_2px_rgb(0_0_0/0.12)]" : "text-[#737373] hover:text-[#171717]"}`}
+          className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-colors lg:px-3.5 ${tab === "all" ? "bg-white text-[#171717] shadow-[0_1px_2px_rgb(0_0_0/0.12)]" : "text-[#737373] hover:text-[#171717]"}`}
           onClick={() => setTab("all")}
         >
           All<span className="ml-1.5 text-xs text-[#a3a3a3]">{items.length}</span>
@@ -290,71 +310,100 @@ export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin 
                 type="button"
                 role="tab"
                 aria-selected={active}
-                className={`whitespace-nowrap rounded-lg py-2 pl-3.5 text-[13px] font-semibold transition-colors lg:py-1.5 ${canDelete && t.id != null ? "pr-3.5 group-hover:pr-9 group-focus-within:pr-9 max-lg:pr-10" : "pr-3.5"} ${active ? "bg-white text-[#171717] shadow-[0_1px_2px_rgb(0_0_0/0.12)]" : "text-[#737373] hover:text-[#171717]"}`}
+                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-colors lg:px-3.5 ${active ? "bg-white text-[#171717] shadow-[0_1px_2px_rgb(0_0_0/0.12)]" : "text-[#737373] hover:text-[#171717]"}`}
                 onClick={() => setTab(t.name)}
               >
                 {t.name}<span className="ml-1.5 text-xs text-[#a3a3a3]">{count}</span>
               </button>
-              {canDelete && t.id != null && (
-                <button
-                  type="button"
-                  aria-label={`Delete type ${t.name}`}
-                  title={`Delete ${t.name}`}
-                  onClick={() => deleteType({ id: t.id as number, name: t.name })}
-                  className="absolute right-1 grid h-6 w-6 place-items-center rounded-md bg-[#fef2f2] text-[#dc2626] opacity-0 transition-opacity hover:bg-[#fee2e2] focus:opacity-100 group-hover:opacity-100 max-lg:h-7 max-lg:w-7 max-lg:opacity-100"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                    <path d="M10 11v6" />
-                    <path d="M14 11v6" />
-                  </svg>
-                </button>
-              )}
             </span>
           );
         })}
         </div>
-        {canAdd && !addingType && (
+        {(canAdd || isAdmin || canDelete) && (
           <button
             type="button"
-            className="rounded-full border border-dashed border-[#d4d4d4] px-3 py-1.5 text-sm font-semibold text-[#171717] hover:bg-white"
+            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#d4d4d4] px-3 py-1.5 text-sm font-semibold text-[#171717] hover:bg-white"
             onClick={() => {
-              setAddingType(true);
-              setTypeError("");
+              setManaging(true);
+              closeAddType();
             }}
           >
-            + Add type
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+            Edit types
           </button>
-        )}
-        {canAdd && addingType && (
-          <span className="inline-flex items-center gap-2">
-            <input
-              autoFocus
-              className="erp-input mt-0 w-56 py-1.5"
-              placeholder="New product type"
-              value={typeName}
-              onChange={(e) => setTypeName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") addType();
-                if (e.key === "Escape") closeAddType();
-              }}
-            />
-            <button type="button" className="erp-btn mt-0" onClick={addTypeOnce} disabled={addTypeBusy}>{addTypeBusy ? <Busy>Adding…</Busy> : "Add"}</button>
-            <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={closeAddType}>Cancel</button>
-          </span>
         )}
       </div>
       {typeError && <Notice text={typeError} kind="error" onDone={() => setTypeError("")} />}
+      {managing && (
+        <Modal title="Product types" onClose={() => { setManaging(false); setRenaming(null); closeAddType(); }} busy={addTypeBusy || renameBusy} size="sm">
+          <p className="erp-hint">Types group the product list. Renaming a type moves its products with it; deleting a type removes its products too.</p>
+          <ul className="divide-y divide-[#f0f0f0] rounded-lg border border-[#e5e5e5]">
+            {types.length === 0 && <li className="px-3 py-4 text-center text-sm text-[#a3a3a3]">No types yet.</li>}
+            {types.map((t) => {
+              const count = items.filter((i) => i.category === t.name).length;
+              const editingThis = renaming?.id === t.id;
+              return (
+                <li key={t.id} className="flex items-center gap-2 px-3 py-2">
+                  {editingThis ? (
+                    <>
+                      <input
+                        autoFocus
+                        className="erp-input mt-0 min-w-0 flex-1"
+                        value={renaming.name}
+                        onChange={(e) => setRenaming({ id: t.id, name: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") renameOnce();
+                          if (e.key === "Escape") { e.stopPropagation(); setRenaming(null); }
+                        }}
+                      />
+                      <button type="button" className="erp-btn mt-0" onClick={renameOnce} disabled={renameBusy}>{renameBusy ? <Busy>Saving…</Busy> : "Save"}</button>
+                      <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={() => setRenaming(null)} disabled={renameBusy}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-[#171717]">{t.name}</div>
+                        <div className="text-xs text-[#a3a3a3]">{count} product{count === 1 ? "" : "s"}</div>
+                      </div>
+                      {isAdmin && (
+                        <button type="button" aria-label={`Rename ${t.name}`} title="Rename" onClick={() => setRenaming({ id: t.id, name: t.name })} className="grid h-9 w-9 place-items-center rounded-lg text-[#404040] hover:bg-[#f4f4f5]">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button type="button" aria-label={`Delete ${t.name}`} title="Delete" onClick={() => deleteType(t)} className="grid h-9 w-9 place-items-center rounded-lg text-[#dc2626] hover:bg-[#fef2f2]">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {canAdd && (
+            <div className="mt-4">
+              <div className="mb-1.5 text-[13px] font-medium text-[#404040]">New type</div>
+              <div className="flex gap-2">
+                <input
+                  className="erp-input mt-0 min-w-0 flex-1"
+                  placeholder="e.g. Scooter"
+                  value={typeName}
+                  onChange={(e) => setTypeName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addTypeOnce()}
+                />
+                <button type="button" className="erp-btn mt-0" onClick={addTypeOnce} disabled={addTypeBusy || !typeName.trim()}>{addTypeBusy ? <Busy>Adding…</Busy> : "Add"}</button>
+              </div>
+            </div>
+          )}
+        </Modal>
+      )}
 
       <div className="erp-panel overflow-x-auto">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <input className="erp-input mt-0 w-56" placeholder="Search size or valve" value={query} onChange={(e) => setQuery(e.target.value)} />
             {canAdd && (
-              <button type="button" className="erp-btn mt-0" onClick={openAdd}>
-                Add product
-              </button>
+              <AddButton label="New product" onClick={openAdd} />
             )}
             {msg && <Notice text={msg} onDone={() => setMsg("")} />}
           </div>
@@ -387,26 +436,10 @@ export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin 
                     {(isAdmin || canDelete) && (
                       <div className="flex items-center gap-2">
                         {isAdmin && (
-                        <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={() => openEdit(r)}>
-                          Edit
-                        </button>
+                        <IconAction kind="edit" label="Edit" onClick={() => openEdit(r)} />
                         )}
                         {canDelete && (
-                        <button
-                          type="button"
-                          aria-label={`Delete ${r.size}`}
-                          title="Delete product"
-                          onClick={() => deleteProduct(r)}
-                          className="grid h-10 w-10 place-items-center rounded-lg bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M3 6h18" />
-                            <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M10 11v6" />
-                            <path d="M14 11v6" />
-                          </svg>
-                        </button>
+                        <IconAction kind="delete" label="Delete" onClick={() => deleteProduct(r)} />
                         )}
                       </div>
                     )}

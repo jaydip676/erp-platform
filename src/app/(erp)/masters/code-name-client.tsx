@@ -1,5 +1,8 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
+import { Modal } from "@/components/modal";
+import { AddButton } from "@/components/add-button";
 import { Busy } from "@/components/spinner";
 import { Notice } from "@/components/notice";
 import { useConfirm } from "@/components/confirm";
@@ -13,6 +16,7 @@ export function CodeNameClient({
   isAdmin,
   canAdd = isAdmin,
   canDelete = isAdmin,
+  noun = "entry",
   title,
   hint,
   endpoint,
@@ -20,6 +24,8 @@ export function CodeNameClient({
   isAdmin: boolean;
   canAdd?: boolean;
   canDelete?: boolean;
+  /** What one row is called on the New button and popup, e.g. "group" or "brand". */
+  noun?: string;
   title: string;
   hint: string;
   endpoint: string;
@@ -39,8 +45,10 @@ export function CodeNameClient({
     load().catch(() => setRows([]));
   }, [endpoint]);
 
+  const [adding, setAdding] = useState(false);
   function reset() {
     setEditing(null);
+    setAdding(false);
     setCode("");
     setName("");
     setError("");
@@ -85,26 +93,32 @@ export function CodeNameClient({
 
   return (
     <div className="space-y-4">
-      {(editing ? isAdmin : canAdd) && (
-        <div className="erp-panel">
-          <h2 className="mb-1 text-lg font-semibold">{editing ? `Edit ${title}` : title}</h2>
+      {msg && <Notice text={msg} kind="success" onDone={() => setMsg("")} />}
+      {error && <Notice text={error} kind="error" onDone={() => setError("")} />}
+      {((editing && isAdmin) || (adding && canAdd)) && (
+        <Modal title={editing ? `Edit ${noun}` : `New ${noun}`} onClose={reset} busy={saveBusy} size="sm">
           <p className="erp-hint">{hint} {editing ? `Code ${code} stays the same.` : "The code is assigned automatically."}</p>
-          <label className="erp-label max-w-md">
+          <label className="erp-label">
             Name
             <input
               className="erp-input"
+              autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && save()}
+              onKeyDown={(e) => e.key === "Enter" && saveOnce()}
             />
           </label>
-          <button type="button" className="erp-btn" onClick={saveOnce} disabled={saveBusy}>{saveBusy ? <Busy>Saving…</Busy> : editing ? "Save" : "Add"}</button>
-          {editing && <button type="button" className="erp-btn erp-btn-secondary" onClick={reset}>Cancel</button>}
-          {msg && <Notice text={msg} kind="success" onDone={() => setMsg("")} />}
-          {error && <Notice text={error} kind="error" onDone={() => setError("")} />}
-        </div>
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end [&>button]:m-0">
+            <button type="button" className="erp-btn erp-btn-secondary" onClick={reset} disabled={saveBusy}>Cancel</button>
+            <button type="button" className="erp-btn" onClick={saveOnce} disabled={saveBusy}>{saveBusy ? <Busy>Saving…</Busy> : editing ? "Save" : "Add"}</button>
+          </div>
+        </Modal>
       )}
       <div className="erp-panel overflow-x-auto">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="m-0 text-lg font-semibold">{title}</h2>
+          {canAdd && <AddButton label={`New ${noun}`} onClick={() => { reset(); setAdding(true); }} />}
+        </div>
         <table className="erp-table">
           <thead>
             <tr>
@@ -122,36 +136,16 @@ export function CodeNameClient({
                   {(isAdmin || canDelete) && (
                     <div className="flex items-center gap-2">
                       {isAdmin && (
-                      <button
-                        type="button"
-                        className="erp-btn erp-btn-secondary mt-0"
-                        onClick={() => {
+                      <IconAction kind="edit" label="Edit" onClick={() => {
                           setEditing(row.id);
                           setCode(row.code);
                           setName(row.name);
                           setMsg("");
                           setError("");
-                        }}
-                      >
-                        Edit
-                      </button>
+                      }} />
                       )}
                       {canDelete && (
-                      <button
-                        type="button"
-                        aria-label={`Delete ${row.name}`}
-                        title="Delete"
-                        onClick={() => remove(row)}
-                        className="grid h-10 w-10 place-items-center rounded-lg bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M3 6h18" />
-                          <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                          <path d="M10 11v6" />
-                          <path d="M14 11v6" />
-                        </svg>
-                      </button>
+                      <IconAction kind="delete" label="Delete" onClick={() => remove(row)} />
                       )}
                     </div>
                   )}

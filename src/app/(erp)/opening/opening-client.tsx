@@ -1,5 +1,10 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
+import { Modal } from "@/components/modal";
+import { AddButton } from "@/components/add-button";
+import { Select } from "@/components/select";
+import { ExpandIcon } from "@/components/expand-icon";
 import { DateInput } from "@/components/date-input";
 import { Busy } from "@/components/spinner";
 import { useDateAllowed, useDateLimits } from "@/components/entry-window";
@@ -56,6 +61,7 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
   // Opening stock entries are only added and removed here, so "isAdmin" is the Add right.
   const dateOk = useDateAllowed();
   const limits = useDateLimits();
+  const [entering, setEntering] = useState(false);
   const confirm = useConfirm();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [inventory, setInventory] = useState<InvItem[]>([]);
@@ -265,6 +271,7 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
       });
       setMsg({ ok: true, text: `${d.voucher_no} posted: ${d.lines} lines${d.batches ? `, ${d.batches} batches created` : ""}.` });
       setQty({}); setMasters([]); setFinals([]); setNotes("");
+      setEntering(false);
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       loadLists();
     } catch (e) {
@@ -344,17 +351,17 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                   <tr key={r.key} className="max-lg:px-3">
                     {kind === "final" && (
                       <td className="erp-stack-full" data-label="Master batch group">
-                        <select className="erp-input m-0" value={r.master_group} onChange={(e) => update(r.key, { master_group: e.target.value })}>
+                        <Select className="erp-input m-0" value={r.master_group} onChange={(e) => update(r.key, { master_group: e.target.value })}>
                           <option value="">Choose…</option>
                           {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
-                        </select>
+                        </Select>
                       </td>
                     )}
                     <td className="erp-stack-full" data-label={kind === "master" ? "Master batch formula" : "Final batch formula"}>
-                      <select className="erp-input m-0" value={r.formula_id} onChange={(e) => update(r.key, { formula_id: e.target.value === "" ? "" : Number(e.target.value) })}>
+                      <Select className="erp-input m-0" value={r.formula_id} onChange={(e) => update(r.key, { formula_id: e.target.value === "" ? "" : Number(e.target.value) })}>
                         <option value="">Manual (no formula)</option>
                         {list.map((x) => <option key={x.id} value={x.id}>{x.name || x.code}</option>)}
-                      </select>
+                      </Select>
                     </td>
                     <td className="text-right" data-label="KG per batch"><input className="erp-input m-0 w-full text-right lg:w-28" type="number" min={0} step="0.001" placeholder="0" value={r.kg} onChange={(e) => update(r.key, { kg: e.target.value })} /></td>
                     <td className="text-right" data-label="No. of batches"><input className="erp-input m-0 w-full text-right lg:w-24" type="number" min={1} step={1} value={r.count} onChange={(e) => update(r.key, { count: e.target.value })} /></td>
@@ -387,9 +394,10 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
 
   return (
     <div className="space-y-4">
-      {isAdmin && (<>
+      {isAdmin && entering && (
+      <Modal title="New opening stock" onClose={() => setEntering(false)} busy={posting} size="xl">
+      <div className="space-y-4">
       <div className="erp-panel">
-        <h2 className="text-lg font-semibold">Opening Stock</h2>
         <p className="erp-hint">
           Enter what was physically on hand before this software was used. Count everything at the cut-off and enter it here with the go-live date.
           Each item lands in the same place a normal entry would put it, so production can carry on from it the next day.
@@ -518,22 +526,22 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
             <div className="space-y-3">
               <div className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_8rem_auto] lg:items-end">
                 <label className="block text-xs font-medium text-[#525252]">Size
-                  <select className="erp-input mt-1 w-full" value={pickSize} onChange={(e) => { const sz = e.target.value; setPickSize(sz); const v = valvesOf(sz); setPickValve(v.length === 1 ? v[0] : ""); }}>
+                  <Select className="erp-input mt-1 w-full" value={pickSize} onChange={(e) => { const sz = e.target.value; setPickSize(sz); const v = valvesOf(sz); setPickValve(v.length === 1 ? v[0] : ""); }}>
                     <option value="">Select size</option>
                     {pairSizes.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
-                  </select>
+                  </Select>
                 </label>
                 <label className="block text-xs font-medium text-[#525252]">Valve
-                  <select className="erp-input mt-1 w-full" value={pickValve} disabled={!pickSize} onChange={(e) => setPickValve(e.target.value)}>
+                  <Select className="erp-input mt-1 w-full" value={pickValve} disabled={!pickSize} onChange={(e) => setPickValve(e.target.value)}>
                     <option value="">{pickSize ? "Select valve" : "Select size first"}</option>
                     {valvesOf(pickSize).map((v) => <option key={v} value={v}>{v}</option>)}
-                  </select>
+                  </Select>
                 </label>
                 <label className="block text-xs font-medium text-[#525252]">Brand
-                  <select className="erp-input mt-1 w-full" value={pickBrand} onChange={(e) => setPickBrand(e.target.value)}>
+                  <Select className="erp-input mt-1 w-full" value={pickBrand} onChange={(e) => setPickBrand(e.target.value)}>
                     <option value="">Select brand</option>
                     {brands.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
-                  </select>
+                  </Select>
                 </label>
                 <label className="block text-xs font-medium text-[#525252]">Opening PCS
                   <input className="erp-input mt-1 w-full text-right" type="number" inputMode="numeric" min="0" step="1" placeholder="0" value={pickQty} onChange={(e) => setPickQty(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
@@ -555,7 +563,7 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                         <td>{r.brand}</td>
                         {haveCell(haveTube("FG", r.size, r.valve, r.brand))}
                         <td className="text-right">{qtyInput(r.key)}</td>
-                        <td className="text-right"><button type="button" className="text-sm text-red-600 hover:underline" onClick={() => setOne(r.key, "")}>Remove</button></td>
+                        <td className="text-right"><IconAction kind="delete" label="Remove" onClick={() => setOne(r.key, "")} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -626,10 +634,15 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
         </div>
       </div>
 
-      </>)}
+      </div>
+      </Modal>
+      )}
 
       <div className="erp-panel">
-        <h3 className="text-base font-semibold">Posted opening entries</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="m-0 text-base font-semibold">Posted opening entries</h3>
+          {isAdmin && <AddButton label="New opening stock" onClick={() => setEntering(true)} />}
+        </div>
         <p className="erp-hint">Open an entry to see every line.{canDelete ? " Remove takes it back out, as long as nothing from it has been used yet." : ""}</p>
         {openings.length === 0 && <p className="text-sm text-[#a3a3a3]">No opening stock posted yet.</p>}
         <div className="space-y-2">
@@ -641,12 +654,12 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
               <div key={o.voucher_no} className={`rounded-lg border border-[#e5e5e5] ${voided ? "opacity-60" : ""}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                   <button type="button" className="flex flex-wrap items-baseline gap-x-3 text-left" onClick={() => setOpen(isOpen ? null : o.voucher_no)}>
-                    <span className="text-xs text-[#a3a3a3]">{isOpen ? "▾" : "▸"}</span>
+                    <ExpandIcon open={isOpen} size="sm" />
                     <span className={`font-semibold ${voided ? "line-through" : ""}`}>{o.voucher_no}</span>
                     <span className="text-sm text-[#737373]">{showDate(o.date)} · {o.lines.length} lines{o.by ? ` · by ${o.by}` : ""}</span>
                     {voided && <span className="text-xs font-semibold text-rose-700">Removed</span>}
                   </button>
-                  {!voided && canDelete && dateOk(o.date) && <button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700" onClick={() => remove(o.voucher_no)}>Remove</button>}
+                  {!voided && canDelete && dateOk(o.date) && <IconAction kind="delete" label="Remove" onClick={() => remove(o.voucher_no)} />}
                 </div>
                 {isOpen && (
                   <div className="border-t border-[#e5e5e5] px-3 py-2">

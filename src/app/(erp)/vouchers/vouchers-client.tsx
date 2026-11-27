@@ -1,5 +1,7 @@
 "use client";
 
+import { Select } from "@/components/select";
+import { ExpandIcon } from "@/components/expand-icon";
 import { DateInput } from "@/components/date-input";
 import { Spinner } from "@/components/spinner";
 import { Fragment, useCallback, useEffect, useState } from "react";
@@ -115,9 +117,9 @@ export function VouchersClient({ perms = [] }: { perms?: string[] }) {
           </label>
           <label className="erp-label">
             Type
-            <select className="erp-input w-48" value={type} onChange={(e) => setType(e.target.value)}>
+            <Select className="erp-input w-48" value={type} onChange={(e) => setType(e.target.value)}>
               {TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="erp-label">
             Voucher no.
@@ -149,7 +151,7 @@ export function VouchersClient({ perms = [] }: { perms?: string[] }) {
               return (
                 <Fragment key={v.voucher_no}>
                   <tr onClick={() => toggle(v.voucher_no)} className={`cursor-pointer ${v.status === "VOID" ? "text-[#a3a3a3]" : ""} ${isOpen ? "bg-[#fafafa]" : ""}`}>
-                    <td className="text-[#a3a3a3]">{isOpen ? "▾" : "▸"}</td>
+                    <td><ExpandIcon open={isOpen} size="sm" /></td>
                     <td className="whitespace-nowrap font-medium">{v.voucher_no}</td>
                     <td>{v.type}</td>
                     <td className="whitespace-nowrap tabular-nums">{showDate(v.date)}</td>

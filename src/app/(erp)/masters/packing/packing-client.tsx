@@ -1,5 +1,8 @@
 "use client";
 
+import { createPortal } from "react-dom";
+import { ScrollLock } from "@/lib/use-scroll-lock";
+
 import { Busy } from "@/components/spinner";
 import { Tabs } from "@/components/tabs";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -61,11 +64,12 @@ function MultiSelect({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [sheet, setSheet] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   const pop = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || sheet) return;
     const onDown = (e: MouseEvent) => {
       if (!pop.current?.contains(e.target as Node) && !btn.current?.contains(e.target as Node)) setOpen(false);
     };
@@ -101,10 +105,11 @@ function MultiSelect({
       window.removeEventListener("resize", close);
       window.removeEventListener("scroll", onScroll, true);
     };
-  }, [open]);
+  }, [open, sheet]);
 
   function toggleOpen() {
     if (disabled) return;
+    if (!open) setSheet(window.matchMedia("(max-width: 639px)").matches);
     if (!open && btn.current) {
       const r = btn.current.getBoundingClientRect();
       const below = window.innerHeight - r.bottom;
@@ -115,7 +120,7 @@ function MultiSelect({
   }
 
   const names = options.filter((o) => value.includes(o.value)).map((o) => o.label);
-  const summary = value.length === 0 ? placeholder : names.length <= 2 ? names.join(", ") : `${names.length} ${noun} selected`;
+  const summary = value.length === 0 ? placeholder : names.length <= 2 ? names.join(", ") : `${names.length} ${noun}`;
   const shown = options.filter((o) => o.label.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
@@ -127,12 +132,62 @@ function MultiSelect({
         onClick={toggleOpen}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="erp-input mt-0 flex min-w-[170px] items-center justify-between gap-2 text-left disabled:bg-[#f5f5f5]"
+        className="erp-input mt-0 flex min-w-0 items-center justify-between gap-2 text-left disabled:bg-[#f5f5f5] lg:min-w-[170px]"
       >
         <span className={`truncate ${value.length === 0 ? "text-[#a3a3a3]" : ""}`}>{summary}</span>
-        <span aria-hidden className="text-xs text-[#737373]">▾</span>
+        <svg className={`shrink-0 text-[#737373] transition-transform duration-150 ${open ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
-      {open && pos && (
+      {open && sheet && createPortal(
+        <div className="fixed inset-0 z-[80] flex items-end bg-[#0a0a0a]/45" onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}>
+          <ScrollLock />
+          <div className="erp-sheet flex max-h-[80dvh] w-full flex-col rounded-t-2xl bg-white pb-[max(10px,env(safe-area-inset-bottom))] shadow-2xl">
+            <div className="flex items-center justify-between px-4 pb-2 pt-3">
+              <div>
+                <div className="text-sm font-semibold capitalize text-[#0a0a0a]">{noun}</div>
+                <div className="text-xs text-[#737373]">{value.length} selected</div>
+              </div>
+              <button type="button" className="erp-btn mt-0 !h-9 !px-4 !text-sm" onClick={() => setOpen(false)}>Done</button>
+            </div>
+            {options.length > 8 && (
+              <div className="px-3 pb-2">
+                <input className="h-10 w-full rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 text-[16px] outline-none focus:border-[#171717]" placeholder={`Search ${noun}`} value={q} onChange={(e) => setQ(e.target.value)} />
+              </div>
+            )}
+            <div className="flex items-center gap-4 border-y border-[#f0f0f0] px-4 py-2 text-[13px] font-semibold text-[#171717]">
+              <button type="button" onClick={() => onChange([...new Set([...value, ...shown.map((o) => o.value)])])}>Select all</button>
+              <button type="button" onClick={() => onChange(value.filter((v) => !shown.some((o) => o.value === v)))}>Clear</button>
+            </div>
+            <ul className="overflow-y-auto overscroll-contain px-2 py-1" role="listbox" aria-multiselectable>
+              {shown.length === 0 && <li className="px-2 py-6 text-center text-sm text-[#a3a3a3]">Nothing found.</li>}
+              {shown.map((o) => {
+                const on = value.includes(o.value);
+                return (
+                  <li key={o.value}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={on}
+                      onClick={() => onChange(on ? value.filter((v) => v !== o.value) : [...value, o.value])}
+                      className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-3 text-left text-[15px] active:bg-[#f4f4f5] ${on ? "font-semibold text-[#0a0a0a]" : "text-[#404040]"}`}
+                    >
+                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${on ? "border-[#171717] bg-[#171717] text-white" : "border-[#d4d4d4] bg-white"}`} aria-hidden>
+                        {on && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 7" /></svg>
+                        )}
+                      </span>
+                      {o.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>,
+        document.body,
+      )}
+      {open && !sheet && pos && (
         <div ref={pop} style={{ position: "fixed", left: pos.left, top: pos.top, width: pos.width }} className="z-50 rounded-xl border border-[#e5e5e5] bg-white p-2 shadow-xl">
           {options.length > 8 && (
             <input autoFocus className="erp-input mb-2 mt-0" placeholder={`Search ${noun}`} value={q} onChange={(e) => setQ(e.target.value)} />
@@ -548,7 +603,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
       <div className="erp-panel">
         <h3 className="mb-1 text-base font-semibold">Products</h3>
         <p className="erp-hint">Qty used per finished piece. 0 deducts nothing. Pouches are deducted by the brand chosen at packing; Nut/Washer/Cap and Valve Pin apply to every size.</p>
-        <table className="erp-table erp-stack m-0">
+        <table className="erp-table erp-stack erp-pack m-0">
           <thead>
             <tr>
               <th className="w-[24%]">Product</th>
@@ -585,7 +640,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                       <span className="text-xs font-normal text-[#a3a3a3]">{item.name} (another rule)</span>
                     )}
                   </td>
-                  <td className="erp-stack-full" data-label="Brand">
+                  <td data-label="Brand">
                     {branded ? (
                       <MultiSelect
                         options={brandOptions}
@@ -599,7 +654,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                       <span className="text-[#a3a3a3]">All brands</span>
                     )}
                   </td>
-                  <td className="erp-stack-full" data-label="Sizes">
+                  <td data-label="Sizes">
                     {fam ? (
                       <button type="button" className="text-left text-sm text-[#737373] underline-offset-2 hover:underline" onClick={() => setTab("outer")}>
                         {famSizes} size{famSizes === 1 ? "" : "s"} · set on the Bags tab ({fam})
@@ -621,6 +676,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                     {fam ? <span className="text-xs text-[#a3a3a3]">Bags tab</span> : <input
                       className="erp-input mt-0"
                       type="number"
+                      inputMode="decimal"
                       min={0}
                       step="0.0001"
                       value={rule.qty}
@@ -632,6 +688,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                     {fam ? <span className="text-xs text-[#a3a3a3]">Bags tab</span> : <input
                       className="erp-input mt-0"
                       type="number"
+                      inputMode="decimal"
                       min={0}
                       step="0.0001"
                       value={rule.exportQty}
@@ -640,7 +697,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                     />}
                   </td>
                   <td className="erp-stack-full">
-                    {isAdmin && (
+                    {isAdmin && ((canDelete && !fixed && rules.length > 1) || (i === rules.length - 1 && note)) && (
                       <div className="flex flex-wrap items-center gap-2">
                         {canDelete && !fixed && rules.length > 1 && (
                           <button type="button" aria-label="Remove rule" title="Remove rule" onClick={() => removeRule(item.id, rule.key)} className="grid h-9 w-9 place-items-center rounded-lg bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]">×</button>
@@ -708,7 +765,56 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
               </button>
             ))}
           </div>
-          <div className="erp-compact mt-4 w-full overflow-x-auto rounded-xl border border-[#e5e5e5]">
+          {/* Phones: one card per size, every bag on its own line with Domestic and Export. */}
+          <div className="mt-4 space-y-2 lg:hidden">
+            {outerSizes.length === 0 && <p className="text-sm text-[#737373]">No sizes in this type.</p>}
+            {outerSizes.map((size) => (
+              <div key={size} className="rounded-xl border border-[#e5e5e5] bg-white p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[15px] font-semibold text-[#0a0a0a]">{size}</span>
+                  <span className="grid w-[11.5rem] grid-cols-2 gap-2 text-center text-[11px] font-semibold uppercase tracking-wide text-[#a3a3a3]">
+                    <span>Domestic</span>
+                    <span>Export</span>
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {bagCols.map((c) => {
+                    const cur = c.get(size);
+                    const box = (field: "qty" | "exportQty") => {
+                      const v = cur?.[field] ?? "0";
+                      return (
+                        <input
+                          className={`h-10 w-full rounded-lg border px-2 text-center text-[16px] outline-none focus:border-[#171717] disabled:bg-[#f5f5f5] ${Number(v) > 0 ? "border-[#d4d4d4] bg-[#fafafa] font-semibold text-[#171717]" : "border-[#e5e5e5] bg-white text-[#a3a3a3]"}`}
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="0.0001"
+                          aria-label={`${c.title} ${field === "qty" ? "domestic" : "export"} for ${size}`}
+                          value={v}
+                          disabled={!isAdmin}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => c.set(size, { [field]: e.target.value })}
+                        />
+                      );
+                    };
+                    return (
+                      <div key={c.key} className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className={`truncate text-[13px] font-semibold ${c.shared ? "text-[#3730a3]" : "text-[#404040]"}`}>{c.title}</div>
+                          {c.sub && <div className="truncate text-[11px] text-[#a3a3a3]">{c.sub}</div>}
+                        </div>
+                        <div className="grid w-[11.5rem] shrink-0 grid-cols-2 gap-2">
+                          {box("qty")}
+                          {box("exportQty")}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="erp-compact mt-4 w-full overflow-x-auto rounded-xl border border-[#e5e5e5] max-lg:hidden">
             <table className="m-0 w-full min-w-[640px] table-fixed border-separate border-spacing-0 text-sm">
               <colgroup>
                 <col className="w-[16%]" />

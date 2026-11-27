@@ -90,7 +90,7 @@ export function Toaster() {
           role={t.kind === "error" ? "alert" : "status"}
           onMouseEnter={() => clearTimeout(timers.get(t.id))}
           onMouseLeave={() => schedule(t.id, t.kind)}
-          className="erp-toast pointer-events-auto flex w-full max-w-[400px] items-start gap-3 rounded-xl border border-[#e5e5e5] bg-white px-3.5 py-3 text-sm shadow-[0_10px_30px_rgb(0_0_0/0.12)]"
+          className="erp-toast pointer-events-auto flex w-full max-w-[400px] items-start gap-3 rounded-xl border border-[#e5e5e5] bg-white px-3.5 py-3 text-sm shadow-[0_0_0_1px_rgb(0_0_0/0.03),0_4px_10px_rgb(0_0_0/0.08),0_16px_40px_rgb(0_0_0/0.18)]"
         >
           <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-white ${ICON[t.kind].bg}`} aria-hidden>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
