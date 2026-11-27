@@ -71,10 +71,10 @@ export function MobileNav({
           className={`absolute inset-y-0 left-0 flex w-[min(300px,86vw)] flex-col bg-[#f7f7f7] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))] shadow-2xl transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex items-center gap-2.5 px-2 py-1.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">D</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">N</span>
             <div className="flex-1 leading-tight">
               <div className="erp-brand">
-                DEMO <span>ERP</span>
+                NIVA <span>ERP</span>
               </div>
               <div className="text-[11px] text-[#8a8a8a]">Production & Inventory</div>
             </div>

@@ -6,11 +6,11 @@ import { RegisterSW } from "@/components/register-sw";
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Demo ERP",
+  title: "Niva ERP",
   description: "Production & Inventory Management",
-  applicationName: "Demo ERP",
+  applicationName: "Niva ERP",
   icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Demo ERP", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Niva ERP", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

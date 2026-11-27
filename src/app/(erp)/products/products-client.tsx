@@ -65,7 +65,7 @@ function formatPct(n: number) {
   return `${Number(n.toFixed(2))}%`;
 }
 
-export function ProductsClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canDelete?: boolean }) {
+export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canAdd?: boolean; canDelete?: boolean }) {
   const [items, setItems] = useState<Item[]>([]);
   const [types, setTypes] = useState<ProductType[]>([]);
   const [inventory, setInventory] = useState<Inventory[]>([]);
@@ -313,7 +313,7 @@ export function ProductsClient({ isAdmin, canDelete = isAdmin }: { isAdmin: bool
           );
         })}
         </div>
-        {isAdmin && !addingType && (
+        {canAdd && !addingType && (
           <button
             type="button"
             className="rounded-full border border-dashed border-[#d4d4d4] px-3 py-1.5 text-sm font-semibold text-[#171717] hover:bg-white"
@@ -325,7 +325,7 @@ export function ProductsClient({ isAdmin, canDelete = isAdmin }: { isAdmin: bool
             + Add type
           </button>
         )}
-        {isAdmin && addingType && (
+        {canAdd && addingType && (
           <span className="inline-flex items-center gap-2">
             <input
               autoFocus
@@ -348,7 +348,7 @@ export function ProductsClient({ isAdmin, canDelete = isAdmin }: { isAdmin: bool
       <div className="erp-panel overflow-x-auto">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <input className="erp-input mt-0 w-56" placeholder="Search size or valve" value={query} onChange={(e) => setQuery(e.target.value)} />
-            {isAdmin && (
+            {canAdd && (
               <button type="button" className="erp-btn mt-0" onClick={openAdd}>
                 Add product
               </button>

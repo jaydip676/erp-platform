@@ -234,6 +234,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
   const unitOut = stage === "extrusion" ? "Green Tube PCS" : stage === "curing" ? "Pressed" : stage === "inspection" ? "Unpacked (OK tubes)" : "Finished Good";
   const subject = stage === "extrusion" || stage === "curing" ? [size, stage === "curing" ? valve : ""].filter(Boolean).join(" / ") : product ? [product.size, product.valve_type].filter(Boolean).join(" / ") : "";
 
+  const canAdd = perms.includes(`process.${stage}.add`);
   const canEdit = perms.includes(`process.${stage}.edit`);
   const canDelete = perms.includes(`process.${stage}.delete`);
   const showActions = canEdit || canDelete;
@@ -273,7 +274,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
         })}
       </div>
 
-    {canEdit ? (
+    {canAdd ? (
     <div className="erp-panel">
       <h2 className="mb-1 text-lg font-semibold">{stageInfo[1].replace(/^\d+\.\s*/, "")}</h2>
       <p className="erp-hint">

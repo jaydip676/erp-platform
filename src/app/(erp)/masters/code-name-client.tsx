@@ -9,12 +9,14 @@ type Row = { id: number; code: string; name: string };
 
 export function CodeNameClient({
   isAdmin,
+  canAdd = isAdmin,
   canDelete = isAdmin,
   title,
   hint,
   endpoint,
 }: {
   isAdmin: boolean;
+  canAdd?: boolean;
   canDelete?: boolean;
   title: string;
   hint: string;
@@ -81,7 +83,7 @@ export function CodeNameClient({
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
+      {(editing ? isAdmin : canAdd) && (
         <div className="erp-panel">
           <h2 className="mb-1 text-lg font-semibold">{editing ? `Edit ${title}` : title}</h2>
           <p className="erp-hint">{hint} {editing ? `Code ${code} stays the same.` : "The code is assigned automatically."}</p>

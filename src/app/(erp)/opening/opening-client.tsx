@@ -51,6 +51,7 @@ const tagOf = (f: Formula) => (f.name || f.code).toUpperCase().replace(/[^A-Z0-9
 const stampOf = (iso: string) => iso.slice(2).replaceAll("-", "");
 
 export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canDelete?: boolean }) {
+  // Opening stock entries are only added and removed here, so "isAdmin" is the Add right.
   const dateOk = useDateAllowed();
   const limits = useDateLimits();
   const confirm = useConfirm();

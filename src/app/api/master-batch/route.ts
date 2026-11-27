@@ -7,7 +7,7 @@ import { postMasterBatch } from "@/lib/erp/transactions";
 
 export async function POST(req: Request) {
   try {
-    const u = await requirePerm(req, "mixing.master.edit");
+    const u = await requirePerm(req, "mixing.master.add");
     const body = masterBatchSchema.parse(await req.json());
     assertEntryDate(u, body.date);
     const result = await postMasterBatch(u, body);

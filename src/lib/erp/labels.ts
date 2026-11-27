@@ -12,7 +12,7 @@ export const VOUCHER_TYPE_NAME: Record<string, string> = {
   INSPECTION: "Inspection",
   PACKING: "Packing",
   OPENING: "Opening stock",
-  TRANSFER: "Green Tube transfer",
+  TRANSFER: "Stock transfer",
   DISPATCH: "Dispatch",
 };
 

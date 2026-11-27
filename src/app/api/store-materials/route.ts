@@ -44,10 +44,10 @@ const receiptSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const user = await requirePerm(req, "materials.store.edit", "materials.pouch.edit");
+    const user = await requirePerm(req, "materials.store.add", "materials.pouch.add");
     const body = receiptSchema.parse(await req.json());
     const item = await prisma.inventoryItem.findUnique({ where: { id: body.store_item_id }, select: { group: true } });
-    if (item && !can(user, item.group === "Pouch Item" ? "materials.pouch.edit" : "materials.store.edit")) {
+    if (item && !can(user, item.group === "Pouch Item" ? "materials.pouch.add" : "materials.store.add")) {
       throw new ForbiddenError(`You do not have permission to receive ${item.group === "Pouch Item" ? "pouch" : "store"} material.`);
     }
     assertEntryDate(user, body.date);

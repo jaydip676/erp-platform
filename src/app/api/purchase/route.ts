@@ -7,7 +7,7 @@ import { postPurchase } from "@/lib/erp/transactions";
 
 export async function POST(req: Request) {
   try {
-    const u = await requirePerm(req, "materials.raw.edit");
+    const u = await requirePerm(req, "materials.raw.add");
     const body = purchaseSchema.parse(await req.json());
     assertEntryDate(u, body.date);
     const result = await postPurchase(u, body);

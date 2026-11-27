@@ -27,11 +27,11 @@ const when = (iso: string | null) =>
 
 const daysValue = (v: string) => (v.trim() === "" ? null : Number(v));
 
-const ACTIONS: Action[] = ["view", "edit", "delete"];
+const ACTIONS: Action[] = ["view", "add", "edit", "delete"];
 
 function PermissionMatrix({ value, onChange, disabled }: { value: string[]; onChange: (next: string[]) => void; disabled?: boolean }) {
   const set = new Set(value);
-  // Turning off View also turns off Edit and Delete of that section; turning on Edit or Delete adds View.
+  // Turning off View also turns off Add, Edit and Delete of that section; turning on any of them adds View.
   const toggle = (keys: string[], on: boolean) => {
     const next = new Set(value);
     for (const k of keys) {
@@ -40,6 +40,7 @@ function PermissionMatrix({ value, onChange, disabled }: { value: string[]; onCh
         next.delete(k);
         if (k.endsWith(".view")) {
           const base = k.slice(0, -5);
+          next.delete(`${base}.add`);
           next.delete(`${base}.edit`);
           next.delete(`${base}.delete`);
         }

@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const u = await requirePerm(req, "masters.opening.edit");
+    const u = await requirePerm(req, "masters.opening.add");
     const json = await req.json();
     // Many lines at once (the Opening Stock screen), or the older one-line form.
     if (json && Array.isArray(json.lines)) {

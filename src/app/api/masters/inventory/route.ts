@@ -149,7 +149,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "masters.items.edit");
+    await requirePerm(req, "masters.items.add");
     const body = itemSchema.parse(await req.json());
     await assertMasters(body.group, body.quality);
     const alter = alterFields(body);

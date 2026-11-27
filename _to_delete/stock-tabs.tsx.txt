@@ -7,7 +7,7 @@ import { TransferClient } from "@/app/(erp)/stock/transfer-client";
 
 type Tab = "stock" | "transfer";
 
-export function StockTabs({ canEdit = false, canDelete = false, initial, allowed = ["stock", "transfer"] }: { canEdit?: boolean; canDelete?: boolean; initial: Tab; allowed?: Tab[] }) {
+export function StockTabs({ canAdd = false, canDelete = false, initial, allowed = ["stock", "transfer"] }: { canAdd?: boolean; canDelete?: boolean; initial: Tab; allowed?: Tab[] }) {
   const [tab, setTab] = useState<Tab>(allowed.includes(initial) ? initial : (allowed[0] ?? "stock"));
   const [version, setVersion] = useState(0);
   const change = (t: Tab) => {
@@ -33,7 +33,7 @@ export function StockTabs({ canEdit = false, canDelete = false, initial, allowed
         value={tab}
         onChange={change}
       />
-      {tab === "stock" ? <StockClient key={version} /> : <TransferClient canEdit={canEdit} canDelete={canDelete} />}
+      {tab === "stock" ? <StockClient key={version} /> : <TransferClient canAdd={canAdd} canDelete={canDelete} />}
     </div>
   );
 }

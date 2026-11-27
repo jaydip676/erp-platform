@@ -37,7 +37,7 @@ const createSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "masters.products.edit");
+    await requirePerm(req, "masters.products.add");
     const body = createSchema.parse(await req.json());
     const size = body.size.trim();
     const row = await prisma.sizeMaster.create({

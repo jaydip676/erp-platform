@@ -23,7 +23,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "masters.items.edit");
+    await requirePerm(req, "masters.items.add");
     const body = materialSchema.parse(await req.json());
     const m = await prisma.rawMaterial.create({
       data: { code: body.code, name: body.name, minStock: body.min_stock },

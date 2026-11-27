@@ -73,7 +73,7 @@ const createSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "masters.batches.edit");
+    await requirePerm(req, "masters.batches.add");
     const body = createSchema.parse(await req.json());
     const code = await nextCode();
     const existing = null as null | { id: number };

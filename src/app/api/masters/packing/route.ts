@@ -165,7 +165,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "masters.packing.edit");
+    await requirePerm(req, "masters.packing.add");
     const body = bodySchema.parse(await req.json());
     const gradeId = await assertRefs(body.quality_grade_id ?? null, body.item_id, body.size);
     const row = await prisma.packingConsumption.create({

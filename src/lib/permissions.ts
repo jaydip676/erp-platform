@@ -3,15 +3,15 @@
  * A page's "view" key is needed to open the page; the other keys unlock its tabs and actions.
  * Safe to import in the browser.
  */
-export type Action = "view" | "edit" | "delete";
-/** One section of a page. Its keys are `${base}.view`, `${base}.edit` (add and change) and `${base}.delete`. */
+export type Action = "view" | "add" | "edit" | "delete";
+/** One section of a page. Its keys are `${base}.view`, `${base}.add` (new entries), `${base}.edit` (change existing ones) and `${base}.delete`. */
 export type PermItem = { base: string; label: string; actions: Action[]; hint?: string };
 export type PermPage = { page: string; label: string; href: string; view: string; items: PermItem[] };
 
-const VED: Action[] = ["view", "edit", "delete"];
+const VED: Action[] = ["view", "add", "edit", "delete"];
 const V: Action[] = ["view"];
 
-export const ACTION_LABEL: Record<Action, string> = { view: "View", edit: "Edit", delete: "Delete" };
+export const ACTION_LABEL: Record<Action, string> = { view: "View", add: "Add", edit: "Edit", delete: "Delete" };
 
 export const PERMISSION_PAGES: PermPage[] = [
   { page: "dashboard", label: "Dashboard", href: "/dashboard", view: "dashboard.view", items: [] },
@@ -55,7 +55,6 @@ export const PERMISSION_PAGES: PermPage[] = [
     view: "stock.view",
     items: [
       { base: "stock.departments", label: "Department Stock", actions: V },
-      { base: "stock.transfer", label: "Green Tube Transfer", actions: VED },
     ],
   },
   {
@@ -71,6 +70,8 @@ export const PERMISSION_PAGES: PermPage[] = [
       { base: "dispatch.store", label: "Store Material", actions: VED },
       { base: "dispatch.pouch", label: "Pouch Material", actions: VED },
       { base: "dispatch.clients", label: "Clients", actions: VED },
+      // Stock Transfer is a tab on the Dispatch page. Its keys keep the old "stock.transfer" name.
+      { base: "stock.transfer", label: "Stock Transfer", actions: VED },
     ],
   },
   { page: "rejections", label: "Rejections", href: "/rejections", view: "rejections.view", items: [] },
@@ -98,18 +99,18 @@ export const ALL_PERMISSIONS: string[] = PERMISSION_PAGES.flatMap((p) => [p.view
 const KNOWN = new Set(ALL_PERMISSIONS);
 
 const DISPATCH_KINDS = ["fg", "master", "final", "raw", "store", "pouch"];
-/** Keys from before View / Edit / Delete, mapped to the new ones ("see and post" became view + edit). */
+/** Keys from before View / Add / Edit / Delete, mapped to the new ones ("see and post" became view + add). */
 function legacy(k: string): string[] {
-  if (/^(materials\.(raw|store|pouch)|mixing\.(master|final)|process\.(extrusion|curing|inspection|packing)|stock\.transfer)$/.test(k)) return [`${k}.view`, `${k}.edit`];
+  if (/^(materials\.(raw|store|pouch)|mixing\.(master|final)|process\.(extrusion|curing|inspection|packing)|stock\.transfer)$/.test(k)) return [`${k}.view`, `${k}.add`];
   if (k === "stock.departments") return ["stock.departments.view"];
-  if (k === "dispatch.post") return DISPATCH_KINDS.flatMap((d) => [`dispatch.${d}.view`, `dispatch.${d}.edit`]);
-  if (k === "dispatch.clients") return ["dispatch.clients.view", "dispatch.clients.edit"];
+  if (k === "dispatch.post") return DISPATCH_KINDS.flatMap((d) => [`dispatch.${d}.view`, `dispatch.${d}.add`]);
+  if (k === "dispatch.clients") return ["dispatch.clients.view", "dispatch.clients.add", "dispatch.clients.edit"];
   return [k];
 }
 
 /**
  * Cleans a stored list: maps old keys, drops unknown ones, and adds what a key depends on
- * (edit or delete includes view; anything on a page opens the page).
+ * (add, edit or delete includes view; anything on a page opens the page).
  */
 export function normalizePermissions(input: unknown): string[] {
   const set = new Set<string>();
@@ -117,9 +118,12 @@ export function normalizePermissions(input: unknown): string[] {
     if (typeof raw !== "string") continue;
     for (const k of legacy(raw)) if (KNOWN.has(k)) set.add(k);
   }
-  for (const k of [...set]) if (/\.(edit|delete)$/.test(k)) set.add(k.replace(/\.(edit|delete)$/, ".view"));
+  for (const k of [...set]) if (/\.(add|edit|delete)$/.test(k)) set.add(k.replace(/\.(add|edit|delete)$/, ".view"));
+  // A page with sections opens only when something inside it is ticked.
   for (const page of PERMISSION_PAGES) {
+    if (page.items.length === 0) continue;
     if (page.items.some((i) => itemKeys(i).some((k) => set.has(k)))) set.add(page.view);
+    else set.delete(page.view);
   }
   return ALL_PERMISSIONS.filter((k) => set.has(k));
 }

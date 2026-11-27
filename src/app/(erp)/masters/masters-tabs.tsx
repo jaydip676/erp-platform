@@ -30,12 +30,13 @@ const PERM: Record<Tab, string> = {
   opening: "masters.opening",
 };
 
-/** Each tab shows only with its "view" permission; add and edit need "edit"; delete needs "delete". */
+/** Each tab shows only with its "view" permission; Add, Edit and Delete each unlock their own controls. */
 export function MastersTabs({ perms, initial, admin = false }: { perms: string[]; initial?: string; admin?: boolean }) {
   const tabs = TABS.filter(([id]) => perms.includes(`${PERM[id]}.view`));
   const [tab, setTab] = useState<Tab | undefined>(tabs.some(([id]) => id === initial) ? (initial as Tab) : tabs[0]?.[0]);
   const edit = (id: Tab) => perms.includes(`${PERM[id]}.edit`);
   const del = (id: Tab) => perms.includes(`${PERM[id]}.delete`);
+  const add = (id: Tab) => perms.includes(`${PERM[id]}.add`);
 
   function pick(id: Tab) {
     setTab(id);
@@ -47,14 +48,15 @@ export function MastersTabs({ perms, initial, admin = false }: { perms: string[]
   return (
     <div className="space-y-4">
       <Tabs tabs={tabs.map(([id, label]) => ({ id, label }))} value={tab} onChange={pick} />
-      {tab === "items" && <InventoryClient isAdmin={edit("items")} canDelete={del("items")} />}
-      {tab === "products" && <ProductsClient isAdmin={edit("products")} canDelete={del("products")} />}
-      {tab === "batches" && <BatchesClient isAdmin={edit("batches")} canDelete={del("batches")} />}
+      {tab === "items" && <InventoryClient isAdmin={edit("items")} canAdd={add("items")} canDelete={del("items")} />}
+      {tab === "products" && <ProductsClient isAdmin={edit("products")} canAdd={add("products")} canDelete={del("products")} />}
+      {tab === "batches" && <BatchesClient isAdmin={edit("batches")} canAdd={add("batches")} canDelete={del("batches")} />}
       {tab === "packing" && <PackingClient isAdmin={edit("packing")} canDelete={del("packing")} admin={admin} />}
-      {tab === "opening" && <OpeningClient isAdmin={edit("opening")} canDelete={del("opening")} />}
+      {tab === "opening" && <OpeningClient isAdmin={add("opening")} canDelete={del("opening")} />}
       {tab === "groups" && (
         <CodeNameClient
           isAdmin={edit("groups")}
+          canAdd={add("groups")}
           canDelete={del("groups")}
           title="Group Entry"
           hint="Groups used on Item Master. Raw Material, Finished Goods, and Store Item are already entered. Add a group here before using it on an item."
@@ -64,6 +66,7 @@ export function MastersTabs({ perms, initial, admin = false }: { perms: string[]
       {tab === "qualities" && (
         <CodeNameClient
           isAdmin={edit("qualities")}
+          canAdd={add("qualities")}
           canDelete={del("qualities")}
           title="Quality (Grade) Entry"
           hint="Each grade is a brand, such as cvaz, viaz, or jkc. On Auto Consumption Packing, brand is only for Pouch, Small Pouch, and Big Pouch."

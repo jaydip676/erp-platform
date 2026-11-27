@@ -28,7 +28,7 @@ type Line = { material_id: number; cons_qty: string };
 const qtyFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false });
 const fmtQty = (n: number) => qtyFormat.format(Number(n) || 0);
 
-export function BatchesClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canDelete?: boolean }) {
+export function BatchesClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canAdd?: boolean; canDelete?: boolean }) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ready, setReady] = useState(false);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -131,7 +131,7 @@ export function BatchesClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
+      {canAdd && (
         <div className="erp-panel">
           <h2 className="mb-1 text-lg font-semibold">Create formula</h2>
           <p className="erp-hint">Enter the KG of each raw material for one batch. Stock is only used when the batch is posted in the Mixing Department.</p>

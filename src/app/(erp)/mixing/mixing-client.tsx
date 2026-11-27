@@ -162,7 +162,7 @@ function LinesTable({
 export function MixingClient({ allowed = ["master", "final"], perms = [] }: { allowed?: ("master" | "final")[]; perms?: string[] }) {
   const limits = useDateLimits();
   const dateOk = useDateAllowed();
-  const may = (t: "master" | "final", a: "edit" | "delete") => perms.includes(`mixing.${t}.${a}`);
+  const may = (t: "master" | "final", a: "add" | "edit" | "delete") => perms.includes(`mixing.${t}.${a}`);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [masters, setMasters] = useState<Batch[]>([]);
   const [ready, setReady] = useState(false);
@@ -387,7 +387,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
 
       {tab === "master" && (
       <>
-      {may("master", "edit") ? (
+      {may("master", "add") ? (
       <div className="erp-panel mb-4">
         <h2 className="text-lg font-semibold">Master Batch</h2>
         <p className="erp-hint">Pick a formula and its materials fill in, or choose Manual. Each of the No. of Batch gets its own batch number.</p>
@@ -524,8 +524,8 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
       </>
       )}
 
-      {tab === "final" && !may("final", "edit") && <p className="erp-hint mb-4">You can view final batches only.</p>}
-      {tab === "final" && may("final", "edit") && (
+      {tab === "final" && !may("final", "add") && <p className="erp-hint mb-4">You can view final batches only.</p>}
+      {tab === "final" && may("final", "add") && (
       <div className="erp-panel">
         <h2 className="text-lg font-semibold">Final Batch</h2>
         <p className="erp-hint">The KG is taken from the chosen master group, oldest batch first. The final formula fills in the extra chemicals, or choose Manual.</p>

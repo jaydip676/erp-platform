@@ -154,7 +154,7 @@ const createSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "masters.products.edit");
+    await requirePerm(req, "masters.products.add");
     const body = createSchema.parse(await req.json());
     await assertProductType(body.category);
     await assertFromInventory(body.size, body.valve, body.bag_item);

@@ -42,11 +42,11 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
   const limits = useDateLimits();
   const dateOk = useDateAllowed();
   // Each Dispatch section (Finished Goods, Master Batches, …) has its own View / Edit / Delete.
-  const right = (k: Kind, a: "view" | "edit" | "delete") => perms.includes(`dispatch.${k.toLowerCase()}.${a}`);
+  const right = (k: Kind, a: "view" | "add" | "edit" | "delete") => perms.includes(`dispatch.${k.toLowerCase()}.${a}`);
   const viewKinds = KINDS.filter((k) => right(k.id, "view"));
-  const editKinds = KINDS.filter((k) => right(k.id, "edit"));
+  const editKinds = KINDS.filter((k) => right(k.id, "add"));
   const canPost = editKinds.length > 0;
-  const canClients = perms.includes("dispatch.clients.edit");
+  const canClients = perms.includes("dispatch.clients.add");
   const canRemove = (h: History) => h.status !== "VOID" && h.kinds.length > 0 && h.kinds.every((k) => right(k, "delete")) && dateOk(h.date);
   const anyRemove = KINDS.some((k) => right(k.id, "delete"));
   const [clients, setClients] = useState<Client[]>([]);

@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const u = await requirePerm(req, "stock.transfer.edit");
+    const u = await requirePerm(req, "stock.transfer.add");
     const body = transferSchema.parse(await req.json());
     assertEntryDate(u, body.date);
     return NextResponse.json(await postGreenTransfer(u, body));

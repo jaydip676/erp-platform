@@ -46,7 +46,7 @@ const TYPES: [string, string][] = [
   ["PACKING", "Packing"],
   ["OPENING", "Opening stock"],
   ["DISPATCH", "Dispatch"],
-  ["TRANSFER", "Green tube transfer"],
+  ["TRANSFER", "Stock transfer"],
 ];
 
 const fmt = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 });

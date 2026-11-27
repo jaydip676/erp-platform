@@ -80,7 +80,8 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
     loadReceipts(tab);
   }, [tab, loadReceipts]);
 
-  const right = (a: "edit" | "delete") => admin || perms.includes(`materials.${tab.toLowerCase()}.${a}`);
+  const right = (a: "add" | "edit" | "delete") => admin || perms.includes(`materials.${tab.toLowerCase()}.${a}`);
+  const canAdd = right("add");
   const canEdit = right("edit");
   const canDelete = right("delete");
 
@@ -128,7 +129,7 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
       <Tabs className="mb-4" tabs={TABS.filter((t) => allowed.includes(t.id)).map((t) => ({ id: t.id, label: t.label, count: listFor(t.id).length }))} value={tab} onChange={switchTab} />
       {tab === "POUCH" && <PouchNegativeRule admin={admin} />}
 
-      {canEdit ? (
+      {canAdd ? (
       <div className="erp-panel mb-4">
         <h2 className="mb-3 text-lg font-semibold">Purchase Receipt</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

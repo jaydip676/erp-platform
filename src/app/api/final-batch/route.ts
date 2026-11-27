@@ -7,7 +7,7 @@ import { postFinalBatch } from "@/lib/erp/transactions";
 
 export async function POST(req: Request) {
   try {
-    const u = await requirePerm(req, "mixing.final.edit");
+    const u = await requirePerm(req, "mixing.final.add");
     const body = finalBatchSchema.parse(await req.json());
     assertEntryDate(u, body.date);
     const result = await postFinalBatch(u, body);

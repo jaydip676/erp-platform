@@ -16,7 +16,7 @@ type Target = { key: number; size: string; qty: string };
 
 const byNumber = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
 
-export function TransferClient({ canEdit = false, canDelete = false }: { canEdit?: boolean; canDelete?: boolean }) {
+export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?: boolean; canDelete?: boolean }) {
   const limits = useDateLimits();
   const dateOk = useDateAllowed();
   const confirm = useConfirm();
@@ -143,9 +143,9 @@ export function TransferClient({ canEdit = false, canDelete = false }: { canEdit
 
   return (
     <div className="space-y-4">
-      {canEdit ? (
+      {canAdd ? (
       <div className="erp-panel">
-        <h2 className="text-lg font-semibold">Green Tube Transfer</h2>
+        <h2 className="text-lg font-semibold">Stock Transfer</h2>
         <p className="erp-hint">Moves green tubes (after Step 1) from one size to one or more other sizes. The PCS taken out must equal the PCS added. Usual sizes are suggested first; any other size can be chosen.</p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="erp-label">

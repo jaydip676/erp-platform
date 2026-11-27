@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "masters.qualities.edit");
+    await requirePerm(req, "masters.qualities.add");
     const body = bodySchema.parse(await req.json());
     const existing = await prisma.qualityGrade.findFirst({ where: { name: { equals: body.name, mode: "insensitive" } } });
     if (existing?.active) throw new ApiError(`${existing.name} is already a grade.`, 409);

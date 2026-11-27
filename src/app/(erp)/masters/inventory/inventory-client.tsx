@@ -62,7 +62,7 @@ function alterLabel(row: Pick<Row, "conv_unit" | "unit_qty" | "alt_qty" | "alt_u
 
 type Named = { id: number; code: string; name: string };
 
-export function InventoryClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canDelete?: boolean }) {
+export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canAdd?: boolean; canDelete?: boolean }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [ready, setReady] = useState(false);
   const [groupOptions, setGroupOptions] = useState<Named[]>([]);
@@ -251,7 +251,7 @@ export function InventoryClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boo
 
   return (
     <div className="space-y-4">
-      {isAdmin && !editing && <div className="erp-panel">{formBody}</div>}
+      {canAdd && !editing && <div className="erp-panel">{formBody}</div>}
       {isAdmin && editing && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-[#0a0a0a]/55 backdrop-blur-[2px] sm:items-center sm:p-4"

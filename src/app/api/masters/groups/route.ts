@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "masters.groups.edit");
+    await requirePerm(req, "masters.groups.add");
     const body = bodySchema.parse(await req.json());
     const existing = await prisma.itemGroup.findFirst({ where: { name: { equals: body.name, mode: "insensitive" } } });
     if (existing?.active) throw new ApiError(`${existing.name} is already a group.`, 409);

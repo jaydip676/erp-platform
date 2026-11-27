@@ -33,7 +33,7 @@ export async function POST(
 ) {
   try {
     const { stage } = await ctx.params;
-    const u = await requirePerm(req, `process.${stage}.edit`);
+    const u = await requirePerm(req, `process.${stage}.add`);
     const body = processSchema.parse(await req.json());
     assertEntryDate(u, body.date);
     let productId = body.product_id;

@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     );
     for (const l of body.lines) {
       const section = l.kind === "STORE" ? (pouchIds.has(l.item_id) ? "dispatch.pouch" : "dispatch.store") : KIND_SECTION[l.kind];
-      if (!can(u, `${section}.edit`)) throw new ForbiddenError("You do not have permission to dispatch one of these items.");
+      if (!can(u, `${section}.add`)) throw new ForbiddenError("You do not have permission to dispatch one of these items.");
     }
     assertEntryDate(u, body.date);
     return NextResponse.json(await postDispatch(u, body));

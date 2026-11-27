@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "dispatch.clients.edit");
+    await requirePerm(req, "dispatch.clients.add");
     const b = body.parse(await req.json());
     await assertFree(b.name);
     return NextResponse.json(toJson(await prisma.client.create({ data: b })));

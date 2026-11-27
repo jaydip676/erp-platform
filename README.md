@@ -1,4 +1,4 @@
-# Demo ERP (Next.js)
+# Niva ERP (Next.js)
 
 TypeScript Next.js App Router application with PostgreSQL (Prisma). This replaces the FastAPI + static HTML pilot with a full-stack Next.js ERP covering the same domains:
 

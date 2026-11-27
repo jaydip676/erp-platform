@@ -3,9 +3,9 @@ import { homePath } from "@/lib/permissions";
 import { NoAccess } from "@/components/no-access";
 import { getCurrentUser } from "@/lib/auth";
 import { ErpShell } from "@/components/erp-shell";
-import { DispatchClient } from "@/app/(erp)/dispatch/dispatch-client";
+import { DispatchTabs } from "@/app/(erp)/dispatch/dispatch-tabs";
 
-export default async function DispatchPage() {
+export default async function DispatchPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const user = await getCurrentUser();
   if (!user) return null;
   const perms = userPermissions(user);
@@ -18,7 +18,7 @@ export default async function DispatchPage() {
   }
   return (
     <ErpShell user={user} title="Dispatch">
-      <DispatchClient perms={perms} />
+      <DispatchTabs perms={perms} initial={(await searchParams).tab} />
     </ErpShell>
   );
 }
