@@ -1,5 +1,8 @@
 "use client";
 
+import { ScrollLock } from "@/lib/use-scroll-lock";
+import { Busy } from "@/components/spinner";
+import { Notice } from "@/components/notice";
 import { useConfirm } from "@/components/confirm";
 import { SkeletonRows } from "@/components/skeleton";
 import { useSubmit } from "@/lib/use-submit";
@@ -240,11 +243,11 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
       )}
 
       <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-[#e5e5e5] pt-4">
-        {msg && <p className={`mr-auto text-sm font-semibold ${msgError ? "text-red-700" : "text-emerald-700"}`}>{msg}</p>}
+        {msg && <Notice text={msg} kind={msgError ? "error" : "success"} onDone={() => setMsg("")} />}
         {editing && (
           <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={reset}>Cancel</button>
         )}
-        <button type="button" className="erp-btn mt-0" onClick={saveOnce} disabled={saveBusy}>{saveBusy ? "Saving…" : editing ? "Save changes" : "Save item"}</button>
+        <button type="button" className="erp-btn mt-0" onClick={saveOnce} disabled={saveBusy}>{saveBusy ? <Busy>Saving…</Busy> : editing ? "Save changes" : "Save item"}</button>
       </div>
     </>
   );
@@ -257,6 +260,7 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
           className="fixed inset-0 z-50 flex items-end justify-center bg-[#0a0a0a]/55 backdrop-blur-[2px] sm:items-center sm:p-4"
           onMouseDown={(e) => e.target === e.currentTarget && reset()}
         >
+          <ScrollLock />
           <div role="dialog" aria-modal="true" aria-label="Edit item" className="relative max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-2xl">
             <button type="button" aria-label="Close" onClick={reset} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-lg text-xl leading-none text-[#737373] hover:bg-[#f5f5f5]">
               ×

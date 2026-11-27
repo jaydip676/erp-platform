@@ -1,5 +1,6 @@
 "use client";
 
+import { Notice } from "@/components/notice";
 import { useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
 
@@ -69,7 +70,7 @@ export function SizesClient({ isAdmin }: { isAdmin: boolean }) {
             </label>
           </div>
           <button type="button" className="erp-btn" onClick={addSize}>Save size</button>
-          {msg && <p className="erp-result">{msg}</p>}
+          {msg && <Notice text={msg} onDone={() => setMsg("")} />}
         </div>
       )}
       <div className="erp-panel overflow-x-auto">

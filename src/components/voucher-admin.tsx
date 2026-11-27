@@ -1,5 +1,8 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { ScrollLock } from "@/lib/use-scroll-lock";
+import { Busy } from "@/components/spinner";
 import { useState } from "react";
 import { Banner } from "@/components/banner";
 import { useConfirm } from "@/components/confirm";
@@ -125,7 +128,7 @@ function EditBox({ v, onClose, onSaved }: { v: EditTarget; onClose: () => void; 
         }
         if (type === "PACKING") body.final_weight_kg = num(weight) ?? null;
       }
-      const r = await api<{ voucher_no: string; replaced?: string }>("/api/vouchers", { method: "PATCH", body: JSON.stringify(body) });
+      const r = await api<{ voucher_no: string; replaced?: string }>("/api/vouchers", { method: "PATCH", body: JSON.stringify(body) }, { quiet: true });
       onSaved(r.replaced ? `${v.voucher_no} updated. It is now ${r.voucher_no}.` : `${v.voucher_no} updated.`);
     } catch (e) {
       setErr(e instanceof ApiClientError ? e.message : "Could not save. Try again.");
@@ -136,6 +139,7 @@ function EditBox({ v, onClose, onSaved }: { v: EditTarget; onClose: () => void; 
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#0a0a0a]/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()} onClick={(e) => e.stopPropagation()}>
+      <ScrollLock />
       <form
         role="dialog"
         aria-modal="true"
@@ -144,7 +148,7 @@ function EditBox({ v, onClose, onSaved }: { v: EditTarget; onClose: () => void; 
       >
         <h2 className="text-base font-semibold text-[#0a0a0a]">Edit {v.voucher_no}</h2>
         <div className="mt-4 space-y-3">
-          <label className="erp-label">Date<input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} /></label>
+          <label className="erp-label">Date<DateInput className="erp-input" {...limits} value={date} onChange={(e) => setDate(e.target.value)} /></label>
           {isReceipt && <label className="erp-label">Quantity received<input className="erp-input" type="number" inputMode="decimal" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} /></label>}
           {type === "EXTRUSION" && (<>
             <label className="erp-label">Green Tube PCS<input className="erp-input" type="number" inputMode="numeric" min={1} step={1} value={output} onChange={(e) => setOutput(e.target.value)} /></label>
@@ -171,7 +175,7 @@ function EditBox({ v, onClose, onSaved }: { v: EditTarget; onClose: () => void; 
         {err && <Banner ok={false}>{err}</Banner>}
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end [&>button]:m-0 [&>button]:w-full sm:[&>button]:w-auto">
           <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={onClose}>Cancel</button>
-          <button type="submit" className="erp-btn mt-0" disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
+          <button type="submit" className="erp-btn mt-0" disabled={busy}>{busy ? <Busy>Saving…</Busy> : "Save changes"}</button>
         </div>
       </form>
     </div>

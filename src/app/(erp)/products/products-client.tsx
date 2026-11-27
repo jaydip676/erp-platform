@@ -1,5 +1,8 @@
 "use client";
 
+import { ScrollLock } from "@/lib/use-scroll-lock";
+import { Busy } from "@/components/spinner";
+import { Notice } from "@/components/notice";
 import { useConfirm } from "@/components/confirm";
 import { SkeletonRows } from "@/components/skeleton";
 import { useSubmit } from "@/lib/use-submit";
@@ -338,12 +341,12 @@ export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin 
                 if (e.key === "Escape") closeAddType();
               }}
             />
-            <button type="button" className="erp-btn mt-0" onClick={addTypeOnce} disabled={addTypeBusy}>{addTypeBusy ? "Adding…" : "Add"}</button>
+            <button type="button" className="erp-btn mt-0" onClick={addTypeOnce} disabled={addTypeBusy}>{addTypeBusy ? <Busy>Adding…</Busy> : "Add"}</button>
             <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={closeAddType}>Cancel</button>
           </span>
         )}
       </div>
-      {typeError && <p className="text-sm text-red-700">{typeError}</p>}
+      {typeError && <Notice text={typeError} kind="error" onDone={() => setTypeError("")} />}
 
       <div className="erp-panel overflow-x-auto">
           <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -353,7 +356,7 @@ export function ProductsClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin 
                 Add product
               </button>
             )}
-            {msg && <span className="text-sm text-emerald-700">{msg}</span>}
+            {msg && <Notice text={msg} onDone={() => setMsg("")} />}
           </div>
           <table className="erp-table">
             <thead>
@@ -526,6 +529,7 @@ function ProductDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0a0a0a]/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
+      <ScrollLock />
       <div role="dialog" aria-modal="true" aria-label={isNew ? "Add product" : "Edit product"} className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
         <header className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-6 py-4">
           <div>
@@ -577,7 +581,7 @@ function ProductDialog({
                       if (e.key === "Escape") { e.stopPropagation(); setNewType(null); setTypeError(""); }
                     }}
                   />
-                  <button type="button" className="erp-btn mt-0 py-1.5" onClick={addType} disabled={typeBusy}>{typeBusy ? "Adding…" : "Add"}</button>
+                  <button type="button" className="erp-btn mt-0 py-1.5" onClick={addType} disabled={typeBusy}>{typeBusy ? <Busy>Adding…</Busy> : "Add"}</button>
                   <button type="button" className="erp-btn erp-btn-secondary mt-0 py-1.5" onClick={() => { setNewType(null); setTypeError(""); }}>Cancel</button>
                 </span>
               )}
@@ -672,7 +676,7 @@ function ProductDialog({
           </p>
           <div className="flex gap-2">
             <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={onClose} disabled={busy}>Cancel</button>
-            <button type="button" className="erp-btn mt-0 min-w-28" onClick={submit} disabled={busy}>{busy ? "Saving…" : isNew ? "Add product" : "Save changes"}</button>
+            <button type="button" className="erp-btn mt-0 min-w-28" onClick={submit} disabled={busy}>{busy ? <Busy>Saving…</Busy> : isNew ? "Add product" : "Save changes"}</button>
           </div>
         </footer>
       </div>

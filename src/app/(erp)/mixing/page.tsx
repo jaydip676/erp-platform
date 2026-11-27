@@ -2,7 +2,6 @@ import { userPermissions } from "@/lib/access";
 import { homePath } from "@/lib/permissions";
 import { NoAccess } from "@/components/no-access";
 import { getCurrentUser } from "@/lib/auth";
-import { ErpShell } from "@/components/erp-shell";
 import { MixingClient } from "@/app/(erp)/mixing/mixing-client";
 
 export default async function MixingPage() {
@@ -11,14 +10,14 @@ export default async function MixingPage() {
   const perms = userPermissions(user);
   if (!perms.includes("mixing.view")) {
     return (
-      <ErpShell user={user} title="Mixing Department">
+      <>
         <NoAccess home={homePath(perms)} />
-      </ErpShell>
+      </>
     );
   }
   return (
-    <ErpShell user={user} title="Mixing Department">
+    <>
       <MixingClient perms={perms} allowed={(["master", "final"] as const).filter((t) => perms.includes(`mixing.${t}.view`))} />
-    </ErpShell>
+    </>
   );
 }

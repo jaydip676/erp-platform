@@ -1,5 +1,7 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { Busy } from "@/components/spinner";
 import { todayISO } from "@/lib/dates";
 import { DashboardSkeleton } from "@/components/skeleton";
 import Link from "next/link";
@@ -200,13 +202,13 @@ export function DashboardClient({ perms = [] }: { username: string; role: string
         </div>
         {preset === "custom" && (
           <div className="flex items-center gap-1.5">
-            <input className="erp-input mt-0 !h-9 w-[140px]" type="date" value={custom.from} max={custom.to} onChange={(e) => setCustom({ ...custom, from: e.target.value })} />
+            <DateInput className="erp-input mt-0 !h-9 w-[140px]" value={custom.from} max={custom.to} onChange={(e) => setCustom({ ...custom, from: e.target.value })} />
             <span className="text-[#a3a3a3]">–</span>
-            <input className="erp-input mt-0 !h-9 w-[140px]" type="date" value={custom.to} min={custom.from} onChange={(e) => setCustom({ ...custom, to: e.target.value })} />
+            <DateInput className="erp-input mt-0 !h-9 w-[140px]" value={custom.to} min={custom.from} onChange={(e) => setCustom({ ...custom, to: e.target.value })} />
           </div>
         )}
         <button type="button" className="erp-btn erp-btn-secondary !m-0" onClick={() => load(range.from, range.to)} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh"}
+          {loading ? <Busy>Refreshing…</Busy> : "Refresh"}
         </button>
       </div>
     </div>

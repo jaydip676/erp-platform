@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { ApiError, jsonError } from "@/lib/api-route";
-import { requireAdmin, requirePerm } from "@/lib/access";
+import { requireAdmin } from "@/lib/access";
 import { SETTINGS, getSetting, setSetting, type SettingKey } from "@/lib/erp/settings";
 
 async function all() {
@@ -27,10 +27,7 @@ export async function GET(req: Request) {
   }
 }
 
-/**
- * PATCH { key, value }. Auto deduction needs "Auto Consumption Packing · edit";
- * allowing negative pouch stock is for admins only.
- */
+/** PATCH { key, value }. Admins only: every setting lives on the admin Settings page. */
 export async function PATCH(req: Request) {
   try {
     const raw = await req.json();
@@ -38,8 +35,8 @@ export async function PATCH(req: Request) {
     const body =
       typeof raw?.packing_auto_deduction === "boolean"
         ? { key: "packing_auto_deduction" as const, value: raw.packing_auto_deduction as boolean }
-        : z.object({ key: z.enum(["packing_auto_deduction", "pouch_allow_negative"]), value: z.boolean() }).parse(raw);
-    const user = body.key === "pouch_allow_negative" ? await requireAdmin(req) : await requirePerm(req, "masters.packing.edit");
+        : z.object({ key: z.enum(Object.keys(SETTINGS) as [SettingKey, ...SettingKey[]]), value: z.boolean() }).parse(raw);
+    const user = await requireAdmin(req);
     try {
       await setSetting(body.key, body.value, user.username);
     } catch {

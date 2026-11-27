@@ -315,7 +315,8 @@ export async function postProcess(
     throw new ApiError("Revert KG cannot be more than the actual KG consumed.");
   }
   let maxKg: number | null = null;
-  if (stage === "extrusion") {
+  // Admin → Settings can switch the KG limit off; then any Actual KG consumed is accepted.
+  if (stage === "extrusion" && (await getSetting("extrusion_kg_limit")).value) {
     const specs = await prisma.catalogItem.findMany({ where: { size: prod.size, active: true } });
     const spec = specs.find((row) => row.weightKg > 0);
     if (!spec) throw new ApiError(`Set the KG for ${prod.size} on the product list.`);

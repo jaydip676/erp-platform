@@ -6,16 +6,20 @@ import { MobileNav } from "@/components/mobile-nav";
 import { isAdmin, userPermissions } from "@/lib/access";
 import { entryWindow } from "@/lib/erp/rights";
 import { EntryWindowProvider } from "@/components/entry-window";
+import { ShellBody, ShellTitle } from "@/components/shell-parts";
 
 type Props = {
   user: { username: string; role: string; displayName?: string | null; entryDays?: number | null };
+  /** Fixed title. Left out inside the app, where the title follows the page. */
   title?: string;
-  wide?: boolean;
-  bare?: boolean;
   children: React.ReactNode;
 };
 
-export function ErpShell({ user, title = "Dashboard", wide = false, bare = false, children }: Props) {
+/**
+ * The app frame: sidebar, mobile bar and header. It is rendered once by the app layout and stays
+ * in place while moving between pages; only the content inside it changes.
+ */
+export function ErpShell({ user, title, children }: Props) {
   const initials = (user.displayName || user.username).slice(0, 2).toUpperCase();
   const perms = userPermissions(user);
   const admin = isAdmin(user);
@@ -51,16 +55,14 @@ export function ErpShell({ user, title = "Dashboard", wide = false, bare = false
       </aside>
       <main className="lg:ml-[240px] lg:p-2 lg:pl-0">
         <div className="min-h-[calc(100dvh-3.5rem)] bg-white lg:min-h-[calc(100vh-1rem)] lg:rounded-xl lg:border lg:border-[#e5e5e5] lg:shadow-sm">
-          {bare ? null : (
-            <header className="hidden h-14 items-center border-b border-[#e5e5e5] px-6 lg:flex">
-              <h1 className="m-0 text-base font-semibold tracking-tight text-[#0a0a0a]">{title}</h1>
-            </header>
-          )}
-          <div className={`px-3 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 sm:px-4 sm:pt-4 ${wide ? "lg:p-5" : "max-w-[1500px] lg:p-6"}`}>
+          <header className="hidden h-14 items-center border-b border-[#e5e5e5] px-6 lg:flex">
+            <ShellTitle title={title} />
+          </header>
+          <ShellBody>
             <EntryWindowProvider value={entryWindow(user)}>
               <ConfirmProvider>{children}</ConfirmProvider>
             </EntryWindowProvider>
-          </div>
+          </ShellBody>
         </div>
       </main>
     </div>

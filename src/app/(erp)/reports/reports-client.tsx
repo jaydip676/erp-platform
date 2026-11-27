@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
 import { useCallback, useEffect, useState } from "react";
 import { SkeletonRows } from "@/components/skeleton";
 import { api, ApiClientError } from "@/lib/client-api";
@@ -87,11 +88,11 @@ export function ReportsClient() {
         <div className="flex flex-wrap items-end gap-3">
           <label className="erp-label">
             From
-            <input className="erp-input w-40" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+            <DateInput className="erp-input w-40" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
           </label>
           <label className="erp-label">
             To
-            <input className="erp-input w-40" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+            <DateInput className="erp-input w-40" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
           </label>
           <button type="button" className="erp-btn erp-btn-secondary mt-0 h-[38px]" onClick={exportCsv} disabled={!rows?.length}>
             Export to Excel

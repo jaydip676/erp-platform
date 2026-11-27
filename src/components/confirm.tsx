@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollLock } from "@/lib/use-scroll-lock";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 type Ask = { title: string; body?: React.ReactNode; confirm?: string; danger?: boolean };
@@ -39,6 +40,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       {children}
       {pending && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#0a0a0a]/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && close(false)}>
+          <ScrollLock />
           <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl sm:p-6">
             <div className="flex gap-4">
               {pending.danger !== false && (

@@ -1,5 +1,7 @@
 "use client";
 
+import { Busy } from "@/components/spinner";
+import { Notice } from "@/components/notice";
 import { useConfirm } from "@/components/confirm";
 import { useSubmit } from "@/lib/use-submit";
 import { useEffect, useState } from "react";
@@ -96,10 +98,10 @@ export function CodeNameClient({
               onKeyDown={(e) => e.key === "Enter" && save()}
             />
           </label>
-          <button type="button" className="erp-btn" onClick={saveOnce} disabled={saveBusy}>{saveBusy ? "Saving…" : editing ? "Save" : "Add"}</button>
+          <button type="button" className="erp-btn" onClick={saveOnce} disabled={saveBusy}>{saveBusy ? <Busy>Saving…</Busy> : editing ? "Save" : "Add"}</button>
           {editing && <button type="button" className="erp-btn erp-btn-secondary" onClick={reset}>Cancel</button>}
-          {msg && <p className="erp-result">{msg}</p>}
-          {error && <p className="mt-3 text-sm font-semibold text-red-700">{error}</p>}
+          {msg && <Notice text={msg} kind="success" onDone={() => setMsg("")} />}
+          {error && <Notice text={error} kind="error" onDone={() => setError("")} />}
         </div>
       )}
       <div className="erp-panel overflow-x-auto">

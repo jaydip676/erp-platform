@@ -1,5 +1,7 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { Busy } from "@/components/spinner";
 import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
@@ -150,7 +152,7 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="erp-label">
             Date
-            <input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateInput className="erp-input" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <label className="erp-label">
             Transfer from (size)
@@ -233,7 +235,7 @@ export function TransferClient({ canAdd = false, canDelete = false }: { canAdd?:
         {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
         <div className="erp-sticky-bar lg:contents">
           <button type="button" className="erp-btn mt-3" onClick={postOnce} disabled={posting || issues.length > 0}>
-            {posting ? "Posting…" : "Post transfer"}
+            {posting ? <Busy>Posting…</Busy> : "Post transfer"}
           </button>
         </div>
       </div>

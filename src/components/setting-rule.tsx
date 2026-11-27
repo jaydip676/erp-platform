@@ -5,7 +5,7 @@ import { api, ApiClientError } from "@/lib/client-api";
 import { useConfirm } from "@/components/confirm";
 
 type Setting = { value: boolean; updated_at: string | null; updated_by: string | null };
-export type RuleKey = "packing_auto_deduction" | "pouch_allow_negative";
+export type RuleKey = "packing_auto_deduction" | "pouch_allow_negative" | "extrusion_kg_limit";
 
 type Rule = {
   title: string;
@@ -20,9 +20,27 @@ type Rule = {
   confirmOff: { title: string; body: string; confirm: string };
   /** Small tag after the title, such as ADMIN. */
   tag: string;
+  /** Heading it is listed under on the Settings page. */
+  group: string;
 };
 
 export const RULES: Record<RuleKey, Rule> = {
+  extrusion_kg_limit: {
+    title: "KG limit on Actual KG consumed",
+    onLabel: "On",
+    offLabel: "Off",
+    onText: "On: Actual KG consumed cannot be more than PCS × KG per piece + ExKg% (rounded up to a whole KG).",
+    offText: "Off: any Actual KG consumed is accepted at Step 1.",
+    warnWhen: false,
+    confirmOn: { title: "Turn the KG limit on?", body: "From the next Step 1 entry, Actual KG consumed is checked against PCS × KG per piece + ExKg% again.", confirm: "Turn on" },
+    confirmOff: {
+      title: "Turn the KG limit off?",
+      body: "Step 1 entries will accept any Actual KG consumed until you turn it back on. Entries already posted are not changed.",
+      confirm: "Turn off",
+    },
+    tag: "Admin",
+    group: "Production · Step 1 Extrusion",
+  },
   packing_auto_deduction: {
     title: "Stock rule: auto deduction at Step 4",
     onLabel: "On",
@@ -36,7 +54,8 @@ export const RULES: Record<RuleKey, Rule> = {
       body: "Step 4 entries will post without deducting pouches, nut/washer/cap, valve pins or bags until you turn it back on. Entries already posted are not changed.",
       confirm: "Turn off",
     },
-    tag: "Packing edit",
+    tag: "Admin",
+    group: "Production · Step 4 Packing",
   },
   pouch_allow_negative: {
     title: "Stock rule: negative stock for Pouch Items",
@@ -56,6 +75,7 @@ export const RULES: Record<RuleKey, Rule> = {
       confirm: "Stop negative stock",
     },
     tag: "Admin",
+    group: "Inward Material · Pouch stock",
   },
 };
 
@@ -72,7 +92,7 @@ export function SettingRule({ name, canEdit, readOnlyNote, className = "mb-4" }:
   useEffect(() => {
     api<Record<RuleKey, Setting>>("/api/settings").then((r) => setS(r[name])).catch(() => setS(null));
   }, [name]);
-  const on = s?.value ?? name === "packing_auto_deduction";
+  const on = s?.value ?? name !== "pouch_allow_negative";
   const warn = on === rule.warnWhen;
 
   async function flip() {

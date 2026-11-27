@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { RegisterSW } from "@/components/register-sw";
+import { Toaster } from "@/components/toast";
+import { TopProgress } from "@/components/top-progress";
 
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 
@@ -23,7 +25,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="gu">
-      <body className={dmSans.variable}>{children}<RegisterSW /></body>
+      <body className={dmSans.variable}>
+        <TopProgress />
+        {children}
+        <Toaster />
+        <RegisterSW />
+      </body>
     </html>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { Busy } from "@/components/spinner";
 import { useDateLimits } from "@/components/entry-window";
 import { VoucherAdminActions } from "@/components/voucher-admin";
 import { Tabs } from "@/components/tabs";
-import { PouchNegativeRule } from "@/components/pouch-negative-rule";
 import { todayISO } from "@/lib/dates";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
@@ -127,7 +128,6 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
   return (
     <>
       <Tabs className="mb-4" tabs={TABS.filter((t) => allowed.includes(t.id)).map((t) => ({ id: t.id, label: t.label, count: listFor(t.id).length }))} value={tab} onChange={switchTab} />
-      {tab === "POUCH" && <PouchNegativeRule admin={admin} />}
 
       {canAdd ? (
       <div className="erp-panel mb-4">
@@ -161,12 +161,12 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
           </label>
           <label className="erp-label">
             Date
-            <input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateInput className="erp-input" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
         </div>
         <div className="erp-sticky-bar lg:contents">
           <button type="button" className="erp-btn" onClick={post} disabled={busy}>
-            {busy ? "Posting…" : "Post Receipt"}
+            {busy ? <Busy>Posting…</Busy> : "Post Receipt"}
           </button>
         </div>
         {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}

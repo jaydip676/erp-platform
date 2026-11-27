@@ -1,5 +1,8 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { ScrollLock } from "@/lib/use-scroll-lock";
+import { Busy } from "@/components/spinner";
 import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
@@ -186,7 +189,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
     setSavingClient(true);
     setClientErr("");
     try {
-      const c = await api<Client>("/api/clients", { method: "POST", body: JSON.stringify(draft) });
+      const c = await api<Client>("/api/clients", { method: "POST", body: JSON.stringify(draft) }, { quiet: true });
       setDraft({ name: "", phone: "", city: "" });
       setAdding(false);
       await loadClients();
@@ -208,7 +211,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <label className="erp-label">
               Date
-              <input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
+              <DateInput className="erp-input" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
             <label className="erp-label">
               Client
@@ -305,7 +308,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
 
           {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
           <div className="erp-sticky-bar lg:contents">
-            <button type="button" className="erp-btn mt-3" onClick={postOnce} disabled={posting || issues.length > 0}>{posting ? "Posting…" : "Post dispatch"}</button>
+            <button type="button" className="erp-btn mt-3" onClick={postOnce} disabled={posting || issues.length > 0}>{posting ? <Busy>Posting…</Busy> : "Post dispatch"}</button>
           </div>
           {issues.length > 0 && lines.length > 0 && <p className="mt-1 text-xs font-semibold text-rose-700">{issues.join(" ")}</p>}
         </div>
@@ -348,6 +351,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
       </div>
       {adding && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#0a0a0a]/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && closeClient()}>
+          <ScrollLock />
           <form
             role="dialog"
             aria-modal="true"
@@ -364,7 +368,7 @@ export function DispatchClient({ perms = [] }: { perms?: string[] }) {
             {clientErr && <Banner ok={false}>{clientErr}</Banner>}
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end [&>button]:m-0 [&>button]:w-full sm:[&>button]:w-auto">
               <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={closeClient}>Cancel</button>
-              <button type="submit" className="erp-btn mt-0" disabled={!draft.name.trim() || savingClient}>{savingClient ? "Adding…" : "Add client"}</button>
+              <button type="submit" className="erp-btn mt-0" disabled={!draft.name.trim() || savingClient}>{savingClient ? <Busy>Adding…</Busy> : "Add client"}</button>
             </div>
           </form>
         </div>

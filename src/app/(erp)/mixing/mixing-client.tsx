@@ -1,5 +1,8 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { Busy } from "@/components/spinner";
+import { Notice } from "@/components/notice";
 import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { Tabs } from "@/components/tabs";
 import { SkeletonRows } from "@/components/skeleton";
@@ -428,7 +431,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
         </label>
         <label className="erp-label m-0 w-44">
           Mixing date
-          <input className="erp-input" type="date" {...limits} value={masterDate} onChange={(e) => setMasterDate(e.target.value)} />
+          <DateInput className="erp-input" {...limits} value={masterDate} onChange={(e) => setMasterDate(e.target.value)} />
         </label>
         </div>
         {ready && formulas.length === 0 && <p className="erp-hint">No master batch formula yet. Create one in Masters → Batch Master.</p>}
@@ -454,10 +457,10 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
         </div>
         <div className="erp-sticky-bar mt-4 border-t border-[#e5e5e5] pt-3">
         <button type="button" className="erp-btn mt-0" onClick={createMaster} disabled={masterIssues.length > 0 || creating !== null}>
-          {creating ? `Creating ${creating.done + 1} of ${creating.total}…` : qtyOk && qtyNum > 1 ? `Post ${qtyNum} Master Batches` : "Post Master Batch"}
+          {creating ? <Busy>{`Creating ${creating.done + 1} of ${creating.total}…`}</Busy> : qtyOk && qtyNum > 1 ? `Post ${qtyNum} Master Batches` : "Post Master Batch"}
         </button>
         {masterIssues.length > 0 && <ul className="mt-2 list-disc pl-5 text-xs font-semibold text-red-700">{masterIssues.map((t) => <li key={t}>{t}</li>)}</ul>}
-        <div className="erp-result">{masterResult}</div>
+        {masterResult && <Notice text={masterResult} onDone={() => setMasterResult("")} />}
         </div>
       </div>
       ) : (
@@ -467,7 +470,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
       <div className="erp-panel">
         <h2 className="text-lg font-semibold">Master Batches</h2>
         <p className="erp-hint">All master batches. Batches made just now are marked New. A batch can be deleted until a final batch uses it.</p>
-        {listMsg && <p className="mb-2 text-sm font-semibold text-[#171717]">{listMsg}</p>}
+        {listMsg && <Notice text={listMsg} onDone={() => setListMsg("")} />}
         {groups.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
             {groups.map((g) => (
@@ -586,7 +589,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
           </label>
           <label className="erp-label">
             Date
-            <input className="erp-input" type="date" {...limits} value={finalDate} onChange={(e) => setFinalDate(e.target.value)} />
+            <DateInput className="erp-input" {...limits} value={finalDate} onChange={(e) => setFinalDate(e.target.value)} />
           </label>
         </div>
         {selected && masterKgNum > 0 && (
@@ -626,11 +629,11 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
         )}
         <div className="erp-sticky-bar mt-4 border-t border-[#e5e5e5] pt-3">
         <button type="button" className="erp-btn mt-0" onClick={createFinal} disabled={finalIssues.length > 0 || finalCreating !== null}>
-          {finalCreating ? `Creating ${finalCreating.done + 1} of ${finalCreating.total}…` : fqOk && fqNum > 1 ? `Post ${fqNum} Final Batches` : "Post Final Batch"}
+          {finalCreating ? <Busy>{`Creating ${finalCreating.done + 1} of ${finalCreating.total}…`}</Busy> : fqOk && fqNum > 1 ? `Post ${fqNum} Final Batches` : "Post Final Batch"}
         </button>
         {mismatch && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">⚠ {mismatch} Check before posting.</p>}
         {finalIssues.length > 0 && <ul className="mt-2 list-disc pl-5 text-xs font-semibold text-red-700">{finalIssues.map((t) => <li key={t}>{t}</li>)}</ul>}
-        <div className="erp-result">{finalResult}</div>
+        {finalResult && <Notice text={finalResult} onDone={() => setFinalResult("")} />}
         {finalMade.length > 0 && (
           <div className="mt-3 overflow-x-auto rounded-lg border border-[#e5e5e5]">
             <table className="erp-table m-0">

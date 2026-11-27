@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { pageTitle } from "@/lib/page-titles";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import { ErpNav } from "@/components/erp-nav";
 import { LogoutButton } from "@/components/logout-button";
 
@@ -17,7 +19,7 @@ export function MobileNav({
   sub,
   initials,
 }: {
-  title: string;
+  title?: string;
   perms: string[];
   admin: boolean;
   name: string;
@@ -30,16 +32,12 @@ export function MobileNav({
   // Close after moving to another page.
   useEffect(() => setOpen(false), [pathname]);
   // Keep the page behind the menu from scrolling.
+  useScrollLock(open);
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
   return (
@@ -56,19 +54,19 @@ export function MobileNav({
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <h1 className="m-0 min-w-0 flex-1 truncate text-base font-semibold text-[#0a0a0a]">{title}</h1>
+        <h1 className="m-0 min-w-0 flex-1 truncate text-base font-semibold text-[#0a0a0a]">{title ?? pageTitle(pathname)}</h1>
         <span className="mr-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#171717] text-xs font-semibold text-white" aria-hidden>
           {initials}
         </span>
       </div>
 
       <div className={`fixed inset-0 z-50 lg:hidden ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-        <div className={`absolute inset-0 bg-black/40 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} />
+        <div className={`absolute inset-0 touch-none bg-black/40 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} />
         <aside
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
-          className={`absolute inset-y-0 left-0 flex w-[min(300px,86vw)] flex-col bg-[#f7f7f7] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))] shadow-2xl transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"}`}
+          className={`absolute inset-y-0 left-0 flex w-[min(300px,86vw)] flex-col overscroll-contain bg-[#f7f7f7] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))] shadow-2xl transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex items-center gap-2.5 px-2 py-1.5">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">N</span>

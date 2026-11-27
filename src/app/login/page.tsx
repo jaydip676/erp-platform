@@ -1,5 +1,6 @@
 "use client";
 
+import { Busy } from "@/components/spinner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
@@ -47,7 +48,7 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
         />
         <button type="submit" className="erp-btn mt-3 w-full" disabled={busy}>
-          {busy ? "Signing in…" : "Login"}
+          {busy ? <Busy>Signing in…</Busy> : "Login"}
         </button>
         {msg && <small className="mt-3 block font-medium text-red-700">{msg}</small>}
       </form>

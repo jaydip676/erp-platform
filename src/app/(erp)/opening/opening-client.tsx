@@ -1,5 +1,7 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { Busy } from "@/components/spinner";
 import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { useEffect, useMemo, useState } from "react";
 import { SkeletonTable } from "@/components/skeleton";
@@ -395,7 +397,7 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="erp-label">
             Opening date (go-live)
-            <input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateInput className="erp-input" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <label className="erp-label md:col-span-2">
             Remarks
@@ -618,7 +620,7 @@ export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
         {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" className="erp-btn" onClick={postOnce} disabled={posting || lines.length === 0 || missingGroup}>
-            {posting ? "Posting…" : `Post opening stock (${showDate(date)})`}
+            {posting ? <Busy>Posting…</Busy> : `Post opening stock (${showDate(date)})`}
           </button>
           {filled.length > 0 && <button type="button" className="erp-btn erp-btn-secondary" onClick={clearDraft}>Clear all</button>}
         </div>

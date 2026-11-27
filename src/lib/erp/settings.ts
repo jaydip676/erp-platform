@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 
 /** Every switch with its default. Stored as text in app_settings. */
-export const SETTINGS: { packing_auto_deduction: boolean; pouch_allow_negative: boolean } = {
+export const SETTINGS: { packing_auto_deduction: boolean; pouch_allow_negative: boolean; extrusion_kg_limit: boolean } = {
   /** Step 4 (Packing) deducts pouches, nut/washer/cap, valve pins and bags from the packing store. */
   packing_auto_deduction: true,
   /** Step 4 may take Pouch Items below zero stock. Other packing items always need enough stock. */
   pouch_allow_negative: false,
+  /** Step 1 (Extrusion): Actual KG consumed may not exceed PCS × KG per piece + ExKg%. Off = any KG. */
+  extrusion_kg_limit: true,
 };
 export type SettingKey = keyof typeof SETTINGS;
 

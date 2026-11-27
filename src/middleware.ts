@@ -15,6 +15,7 @@ const PROTECTED = [
   "/products",
   "/masters",
   "/users",
+  "/settings",
 ];
 
 export function middleware(request: NextRequest) {
@@ -35,6 +36,7 @@ export const config = {
     "/login",
     "/dashboard/:path*",
     "/users/:path*",
+    "/settings/:path*",
     "/materials/:path*",
     "/mixing/:path*",
     "/process/:path*",

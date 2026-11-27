@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type Icon = "users" | "dashboard" | "layers" | "award" | "package" | "boxes" | "flask" | "list" | "inbox" | "blend" | "factory" | "warehouse" | "x" | "file" | "receipt" | "database" | "truck";
+type Icon = "users" | "dashboard" | "layers" | "award" | "package" | "boxes" | "flask" | "list" | "inbox" | "blend" | "factory" | "warehouse" | "x" | "file" | "receipt" | "database" | "truck" | "settings";
 
 const operations: { href: string; label: string; icon: Icon }[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
@@ -38,6 +38,7 @@ const PATHS: Record<Icon, string[]> = {
   file: ["M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", "M14 2v4a2 2 0 0 0 2 2h4", "M10 9H8", "M16 13H8", "M16 17H8"],
   receipt: ["M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z", "M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8", "M12 17.5v-11"],
   truck: ["M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2", "M15 18H9", "M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62L18.3 9.38a1 1 0 0 0-.78-.38H14", "M17 18a2 2 0 1 0 4 0 2 2 0 0 0-4 0Z", "M3 18a2 2 0 1 0 4 0 2 2 0 0 0-4 0Z"],
+  settings: ["M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"],
   database: ["M12 8c4.97 0 9-1.34 9-3s-4.03-3-9-3-9 1.34-9 3 4.03 3 9 3Z", "M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5", "M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"],
 };
 
@@ -96,6 +97,7 @@ export function ErpNav({ perms, admin }: { perms: string[]; admin: boolean }) {
         <>
           <Group label="Admin" />
           <Item href="/users" label="Users & Permissions" icon="users" pathname={pathname} />
+          <Item href="/settings" label="Settings" icon="settings" pathname={pathname} />
         </>
       )}
     </nav>

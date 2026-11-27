@@ -1,5 +1,6 @@
 "use client";
 
+import { Busy } from "@/components/spinner";
 import { useEffect, useMemo, useState } from "react";
 import { SkeletonRows } from "@/components/skeleton";
 import { api, ApiClientError } from "@/lib/client-api";
@@ -280,7 +281,7 @@ export function UsersClient({ meId }: { meId: number }) {
           {issues.length > 0 && <ul className="mt-3 list-disc pl-5 text-xs font-semibold text-rose-700">{issues.map((t) => <li key={t}>{t}</li>)}</ul>}
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" className="erp-btn" disabled={saving || issues.length > 0} onClick={saveOnce}>
-              {saving ? "Saving…" : form.id == null ? "Create user" : "Save changes"}
+              {saving ? <Busy>Saving…</Busy> : form.id == null ? "Create user" : "Save changes"}
             </button>
             <button type="button" className="erp-btn erp-btn-secondary" onClick={() => setForm(null)}>Cancel</button>
           </div>

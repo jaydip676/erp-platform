@@ -1,5 +1,7 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { Busy } from "@/components/spinner";
 import { VoucherAdminActions } from "@/components/voucher-admin";
 import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { useSubmit } from "@/lib/use-submit";
@@ -37,6 +39,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
   const [batches, setBatches] = useState<Batch[]>([]);
   const [stage, setStage] = useState<StageId>(allowed[0] ?? "extrusion");
   const [autoDeduct, setAutoDeduct] = useState(true);
+  const [kgLimit, setKgLimit] = useState(true);
   const [processDate, setProcessDate] = useState(() => todayISO());
   const [productId, setProductId] = useState<number | "">("");
   const [size, setSize] = useState("");
@@ -77,7 +80,12 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
       if (rows.length) setGradeId(rows[0].id);
     }).catch(() => setGrades([]));
     api<PackingRule[]>("/api/masters/packing").then(setPackingRules).catch(() => setPackingRules([]));
-    api<{ packing_auto_deduction: boolean }>("/api/settings").then((s) => setAutoDeduct(s.packing_auto_deduction)).catch(() => setAutoDeduct(true));
+    api<{ packing_auto_deduction: boolean; extrusion_kg_limit?: { value: boolean } }>("/api/settings")
+      .then((s) => {
+        setAutoDeduct(s.packing_auto_deduction);
+        setKgLimit(s.extrusion_kg_limit?.value ?? true);
+      })
+      .catch(() => setAutoDeduct(true));
     api<{ size: string; valve?: string; weight_kg: number; ex_kg: number }[]>("/api/catalog")
       .then((rows) => {
         const bySize: Record<string, string[]> = {};
@@ -177,7 +185,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
   const good = outputQty;
   const usedQty = outputQty + rejection;
   const piece = specs[size];
-  const maxKg = stage === "extrusion" && piece && outputQty > 0 ? maxConsumedKg(piece.weight_kg, outputQty, piece.ex_kg) : null;
+  const maxKg = stage === "extrusion" && kgLimit && piece && outputQty > 0 ? maxConsumedKg(piece.weight_kg, outputQty, piece.ex_kg) : null;
   const estKg = product?.unit_weight_kg ? Number((good * product.unit_weight_kg).toFixed(3)) : null;
   const packingForSize = packingRules.filter((rule) => product && rule.size === product.size);
   const packingPreview = packingForSize.filter((rule) => rule.quality_grade_id == null || rule.quality_grade_id === Number(gradeId));
@@ -286,7 +294,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <label className="erp-label">
           Date
-          <input className="erp-input" type="date" value={processDate} onChange={(e) => setProcessDate(e.target.value)} />
+          <DateInput className="erp-input" value={processDate} onChange={(e) => setProcessDate(e.target.value)} />
         </label>
         {stage === "extrusion" && (
             <label className="erp-label">
@@ -340,12 +348,17 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
                 value={consumedKg || ""} placeholder="0"
                 onChange={(e) => setConsumedKg(Number(e.target.value))}
               />
-              {piece && outputQty > 0 && (
+              {!kgLimit && (
+                <span className="mt-1 block text-xs font-normal normal-case tracking-normal text-[#737373]">
+                  No KG limit (turned off in Admin → Settings).
+                </span>
+              )}
+              {kgLimit && piece && outputQty > 0 && (
                 <span className="mt-1 block text-xs font-normal normal-case tracking-normal text-[#737373]">
                   {outputQty} PCS × {piece.weight_kg} KG + {piece.ex_kg}% ExKg = {maxKg?.toFixed(3)} KG
                 </span>
               )}
-              {size && !piece && (
+              {kgLimit && size && !piece && (
                 <span className="mt-1 block text-xs font-normal normal-case tracking-normal text-amber-700">
                   Set the KG for this size on the product list.
                 </span>
@@ -428,7 +441,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
       {stage === "packing" && (
         <div className={`mt-3 rounded-xl p-3 text-sm ${autoDeduct ? "bg-[#fafafa] text-[#737373]" : "border border-amber-300 bg-amber-50 text-amber-900"}`}>
           <b>Auto deduction when this size is finished</b>
-          {!autoDeduct && <p className="mt-1 font-semibold">Off. This entry will not deduct any packing items. An admin can turn it on under Masters → Auto Consumption Packing.</p>}
+          {!autoDeduct && <p className="mt-1 font-semibold">Off. This entry will not deduct any packing items. An admin can turn it on under Admin → Settings.</p>}
           {autoDeduct && packingPreview.length === 0 && <p className="mt-1">No consumption is set for this size. Add it under Masters → Auto Consumption Packing.</p>}
           {autoDeduct && packingPreview.length > 0 && (
             <ul className="mt-1 space-y-1">
@@ -465,7 +478,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
           <p className="mb-2 text-xs font-semibold text-rose-700">You can only post entries dated from {showDate(limits.min)} to today.</p>
         )}
         <button type="button" className="erp-btn" onClick={postProcessOnce} disabled={postProcessBusy || !dateOk(processDate)}>
-          {postProcessBusy ? "Posting…" : "Post voucher"}
+          {postProcessBusy ? <Busy>Posting…</Busy> : "Post voucher"}
         </button>
       </div>
     </div>
@@ -475,7 +488,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
         <p className="erp-hint">You can view this step only. Pick a date to see its entries.</p>
         <label className="erp-label max-w-xs">
           Date
-          <input className="erp-input" type="date" value={processDate} onChange={(e) => setProcessDate(e.target.value)} />
+          <DateInput className="erp-input" value={processDate} onChange={(e) => setProcessDate(e.target.value)} />
         </label>
         {result && <Banner ok={result.ok} onClose={() => setResult(null)}>{result.text}</Banner>}
       </div>

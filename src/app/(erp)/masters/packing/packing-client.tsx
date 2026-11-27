@@ -1,7 +1,7 @@
 "use client";
 
+import { Busy } from "@/components/spinner";
 import { Tabs } from "@/components/tabs";
-import { SettingRule } from "@/components/setting-rule";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
 import { isPackingPouch } from "@/lib/erp/units";
@@ -534,8 +534,6 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
 
   return (
     <div className="space-y-4">
-
-      <SettingRule name="packing_auto_deduction" canEdit={isAdmin} readOnlyNote="You can only view this setting" className="" />
       <Tabs
         size="sm"
         tabs={[
@@ -660,7 +658,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
           <div className="erp-sticky-bar mt-3 flex flex-wrap items-center justify-end gap-3">
             {mainDirty > 0 && <span className="text-xs text-[#737373]">{mainDirty} product{mainDirty > 1 ? "s" : ""} with unsaved changes</span>}
             <button type="button" className="erp-btn mt-0" disabled={busy !== null || mainDirty === 0} onClick={saveAll}>
-              {busy !== null ? "Saving…" : "Save"}
+              {busy !== null ? <Busy>Saving…</Busy> : "Save"}
             </button>
           </div>
         )}
@@ -687,7 +685,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                   <span key={f.name} className={`text-xs font-semibold ${famNote[f.name].ok ? "text-emerald-700" : "text-amber-800"}`}>{f.name}: {famNote[f.name].text}</span>
                 ))}
                 <button type="button" className="erp-btn mt-0" disabled={busy !== null || (!outers.some((o) => dirty.has(o.id)) && !bagsDirty)} onClick={saveOuter}>
-                  {busy !== null ? "Saving…" : "Save"}
+                  {busy !== null ? <Busy>Saving…</Busy> : "Save"}
                 </button>
               </div>
             )}

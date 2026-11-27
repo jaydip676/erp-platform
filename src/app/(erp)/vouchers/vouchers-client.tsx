@@ -1,5 +1,7 @@
 "use client";
 
+import { DateInput } from "@/components/date-input";
+import { Spinner } from "@/components/spinner";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { SkeletonRows } from "@/components/skeleton";
 import { Banner } from "@/components/banner";
@@ -105,11 +107,11 @@ export function VouchersClient({ perms = [] }: { perms?: string[] }) {
         <div className="flex flex-wrap items-end gap-3">
           <label className="erp-label">
             From
-            <input className="erp-input w-40" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+            <DateInput className="erp-input w-40" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
           </label>
           <label className="erp-label">
             To
-            <input className="erp-input w-40" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+            <DateInput className="erp-input w-40" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
           </label>
           <label className="erp-label">
             Type
@@ -169,7 +171,7 @@ export function VouchersClient({ perms = [] }: { perms?: string[] }) {
                       <td />
                       <td colSpan={cols - 1} className="pb-4">
                         {!d ? (
-                          <span className="text-sm text-[#a3a3a3]">Loading…</span>
+                          <span className="inline-flex items-center gap-2 text-sm text-[#a3a3a3]"><Spinner />Loading…</span>
                         ) : (
                           <div className="space-y-2">
                             <div className="text-xs text-[#737373]">

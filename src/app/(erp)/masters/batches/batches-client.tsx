@@ -1,5 +1,8 @@
 "use client";
 
+import { ScrollLock } from "@/lib/use-scroll-lock";
+import { Busy } from "@/components/spinner";
+import { Notice } from "@/components/notice";
 import { useSubmit } from "@/lib/use-submit";
 import { Skeleton } from "@/components/skeleton";
 import { useEffect, useState } from "react";
@@ -76,7 +79,7 @@ export function BatchesClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin }
     setDeleting(true);
     setDeleteError("");
     try {
-      await api(`/api/masters/batches?id=${pending.id}`, { method: "DELETE" });
+      await api(`/api/masters/batches?id=${pending.id}`, { method: "DELETE" }, { quiet: true });
       setMsg(`${pending.name || pending.code} deleted`);
       setPending(null);
       await load();
@@ -201,8 +204,8 @@ export function BatchesClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin }
             </table>
           </div>
           <button type="button" className="erp-btn erp-btn-secondary" onClick={() => setLines([...lines, materials[0] ? lineFrom(materials[0]) : { material_id: 0, cons_qty: "" }])}>+ Material line</button>
-          <button type="button" className="erp-btn" onClick={createOnce} disabled={createBusy}>{createBusy ? "Saving…" : "Save formula"}</button>
-          {msg && <p className="erp-result">{msg}</p>}
+          <button type="button" className="erp-btn" onClick={createOnce} disabled={createBusy}>{createBusy ? <Busy>Saving…</Busy> : "Save formula"}</button>
+          {msg && <Notice text={msg} onDone={() => setMsg("")} />}
         </div>
       )}
       <div className="erp-panel">
@@ -304,6 +307,7 @@ export function BatchesClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin }
           onMouseDown={(e) => e.target === e.currentTarget && !deleting && setPending(null)}
           onKeyDown={(e) => e.key === "Escape" && !deleting && setPending(null)}
         >
+          <ScrollLock />
           <div role="alertdialog" aria-modal="true" aria-labelledby="del-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#fef2f2] text-[#dc2626]">
@@ -326,7 +330,7 @@ export function BatchesClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin }
                 Cancel
               </button>
               <button type="button" className="erp-btn mt-0 !bg-[#dc2626]" onClick={confirmDelete} disabled={deleting}>
-                {deleting ? "Deleting…" : "Delete"}
+                {deleting ? <Busy>Deleting…</Busy> : "Delete"}
               </button>
             </div>
           </div>
@@ -405,6 +409,7 @@ function EditBatchDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0a0a0a]/55 backdrop-blur-[2px] sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
+      <ScrollLock />
       <div role="dialog" aria-modal="true" aria-label="Edit formula" className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
         <header className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-6 py-4">
           <div>
@@ -518,7 +523,7 @@ function EditBatchDialog({
           </p>
           <div className="flex gap-2">
             <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={onClose} disabled={busy}>Cancel</button>
-            <button type="button" className="erp-btn mt-0 min-w-28" onClick={submit} disabled={busy}>{busy ? "Saving…" : "Save changes"}</button>
+            <button type="button" className="erp-btn mt-0 min-w-28" onClick={submit} disabled={busy}>{busy ? <Busy>Saving…</Busy> : "Save changes"}</button>
           </div>
         </footer>
       </div>
