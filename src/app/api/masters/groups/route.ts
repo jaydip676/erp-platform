@@ -75,7 +75,7 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    await requirePerm(req, "masters.groups.edit");
+    await requirePerm(req, "masters.groups.delete");
     const id = z.number().int().parse(Number(new URL(req.url).searchParams.get("id")));
     const group = await prisma.itemGroup.findFirst({ where: { id, active: true } });
     if (!group) throw new ApiError("Group not found", 404);

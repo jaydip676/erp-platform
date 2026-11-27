@@ -14,6 +14,7 @@ type Row = {
   active: boolean;
   displayName?: string | null;
   permissions?: unknown;
+  entryDays?: number | null;
   deleted?: boolean;
   createdAt?: Date;
   lastLoginAt?: Date | null;
@@ -27,6 +28,7 @@ const username = z
   .regex(/^[a-zA-Z0-9._-]+$/, "User ID can use letters, numbers, dot, dash and underscore only.");
 const password = z.string().min(6, "Password needs at least 6 characters.").max(100);
 const role = z.enum(["admin", "user"]);
+const entryDays = z.number().int().min(0).max(999).nullable();
 
 function toJson(u: Row) {
   return {
@@ -36,6 +38,7 @@ function toJson(u: Row) {
     role: u.role === "admin" ? "admin" : "user",
     active: u.active,
     permissions: u.role === "admin" ? [] : normalizePermissions(u.permissions),
+    entry_days: u.role === "admin" ? null : (u.entryDays ?? null),
     created_at: u.createdAt?.toISOString() ?? null,
     last_login_at: u.lastLoginAt?.toISOString() ?? null,
   };
@@ -66,6 +69,7 @@ export async function POST(req: Request) {
         display_name: z.string().trim().max(120).optional().default(""),
         role: role.default("user"),
         permissions: z.array(z.string()).default([]),
+        entry_days: entryDays.optional().default(null),
       })
       .parse(await req.json());
     const taken = await prisma.user.findFirst({ where: { username: { equals: body.username, mode: "insensitive" } } });
@@ -77,6 +81,7 @@ export async function POST(req: Request) {
         role: body.role,
         displayName: body.display_name || null,
         permissions: body.role === "admin" ? [] : normalizePermissions(body.permissions),
+        entryDays: body.role === "admin" ? null : body.entry_days,
       } as never,
     });
     clearUserCache();
@@ -95,6 +100,7 @@ export async function PATCH(req: Request) {
         display_name: z.string().trim().max(120).optional(),
         role: role.optional(),
         permissions: z.array(z.string()).optional(),
+        entry_days: entryDays.optional(),
         active: z.boolean().optional(),
         password: password.optional(),
       })
@@ -113,6 +119,7 @@ export async function PATCH(req: Request) {
     if (body.role) data.role = body.role;
     if (body.active !== undefined) data.active = body.active;
     if (body.password) data.passwordHash = await hashPassword(body.password);
+    if (body.entry_days !== undefined) data.entryDays = nextRole === "admin" ? null : body.entry_days;
     if (body.permissions) data.permissions = nextRole === "admin" ? [] : normalizePermissions(body.permissions);
     const row = await prisma.user.update({ where: { id: user.id }, data: data as never });
     clearUserCache();

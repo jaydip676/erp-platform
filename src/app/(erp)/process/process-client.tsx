@@ -1,6 +1,7 @@
 "use client";
 
 import { VoucherAdminActions } from "@/components/voucher-admin";
+import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { useSubmit } from "@/lib/use-submit";
 import { SkeletonRows } from "@/components/skeleton";
 import { showDate, todayISO } from "@/lib/dates";
@@ -29,7 +30,9 @@ const STAGES = [
 
 type StageId = (typeof STAGES)[number][0];
 
-export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[], admin = false }: { allowed?: StageId[]; admin?: boolean }) {
+export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[], perms = [] }: { allowed?: StageId[]; perms?: string[] }) {
+  const dateOk = useDateAllowed();
+  const limits = useDateLimits();
   const [products, setProducts] = useState<Product[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [stage, setStage] = useState<StageId>(allowed[0] ?? "extrusion");
@@ -231,6 +234,10 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
   const unitOut = stage === "extrusion" ? "Green Tube PCS" : stage === "curing" ? "Pressed" : stage === "inspection" ? "Unpacked (OK tubes)" : "Finished Good";
   const subject = stage === "extrusion" || stage === "curing" ? [size, stage === "curing" ? valve : ""].filter(Boolean).join(" / ") : product ? [product.size, product.valve_type].filter(Boolean).join(" / ") : "";
 
+  const canEdit = perms.includes(`process.${stage}.edit`);
+  const canDelete = perms.includes(`process.${stage}.delete`);
+  const showActions = canEdit || canDelete;
+
   if (allowed.length === 0) {
     return <div className="erp-panel text-sm text-[#737373]">You have no production step assigned. Ask an admin for access.</div>;
   }
@@ -266,6 +273,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
         })}
       </div>
 
+    {canEdit ? (
     <div className="erp-panel">
       <h2 className="mb-1 text-lg font-semibold">{stageInfo[1].replace(/^\d+\.\s*/, "")}</h2>
       <p className="erp-hint">
@@ -452,11 +460,25 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
       </div>
       {result && <Banner ok={result.ok} onClose={() => setResult(null)}>{result.text}</Banner>}
       <div className="erp-sticky-bar lg:contents">
-        <button type="button" className="erp-btn" onClick={postProcessOnce} disabled={postProcessBusy}>
+        {!dateOk(processDate) && limits.min && (
+          <p className="mb-2 text-xs font-semibold text-rose-700">You can only post entries dated from {showDate(limits.min)} to today.</p>
+        )}
+        <button type="button" className="erp-btn" onClick={postProcessOnce} disabled={postProcessBusy || !dateOk(processDate)}>
           {postProcessBusy ? "Posting…" : "Post voucher"}
         </button>
       </div>
     </div>
+    ) : (
+      <div className="erp-panel">
+        <h2 className="mb-1 text-lg font-semibold">{stageInfo[1].replace(/^\d+\.\s*/, "")}</h2>
+        <p className="erp-hint">You can view this step only. Pick a date to see its entries.</p>
+        <label className="erp-label max-w-xs">
+          Date
+          <input className="erp-input" type="date" value={processDate} onChange={(e) => setProcessDate(e.target.value)} />
+        </label>
+        {result && <Banner ok={result.ok} onClose={() => setResult(null)}>{result.text}</Banner>}
+      </div>
+    )}
 
       <div className="erp-panel">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -478,7 +500,7 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
                 {stage === "inspection" && <th className="text-right">Second</th>}
                 {stage === "inspection" && <th className="text-right">Scrap</th>}
                 <th>Remarks</th>
-                {admin && <th className="w-28" />}
+                {showActions && <th className="w-28" />}
               </tr>
             </thead>
             <tbody>
@@ -499,9 +521,11 @@ export function ProcessClient({ allowed = STAGES.map(([id]) => id) as StageId[],
                   {stage === "inspection" && <td className="text-right tabular-nums">{e.second || "–"}</td>}
                   {stage === "inspection" && <td className="text-right tabular-nums">{e.scrap || "–"}</td>}
                   <td className="text-[#737373]">{e.notes || ""}</td>
-                  {admin && (
+                  {showActions && (
                     <td className="text-right no-underline">
                       <VoucherAdminActions
+                        canEdit={canEdit}
+                        canDelete={canDelete}
                         v={{ ...e, type_code: stage.toUpperCase(), date: processDate, output: e.output }}
                         onResult={setResult}
                         onChanged={() => setPosted((n) => n + 1)}

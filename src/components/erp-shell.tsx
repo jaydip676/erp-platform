@@ -4,9 +4,11 @@ import { NumberWheelGuard } from "@/components/number-wheel-guard";
 import { ConfirmProvider } from "@/components/confirm";
 import { MobileNav } from "@/components/mobile-nav";
 import { isAdmin, userPermissions } from "@/lib/access";
+import { entryWindow } from "@/lib/erp/rights";
+import { EntryWindowProvider } from "@/components/entry-window";
 
 type Props = {
-  user: { username: string; role: string; displayName?: string | null };
+  user: { username: string; role: string; displayName?: string | null; entryDays?: number | null };
   title?: string;
   wide?: boolean;
   bare?: boolean;
@@ -55,7 +57,9 @@ export function ErpShell({ user, title = "Dashboard", wide = false, bare = false
             </header>
           )}
           <div className={`px-3 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 sm:px-4 sm:pt-4 ${wide ? "lg:p-5" : "max-w-[1500px] lg:p-6"}`}>
-            <ConfirmProvider>{children}</ConfirmProvider>
+            <EntryWindowProvider value={entryWindow(user)}>
+              <ConfirmProvider>{children}</ConfirmProvider>
+            </EntryWindowProvider>
           </div>
         </div>
       </main>

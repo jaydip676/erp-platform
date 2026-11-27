@@ -174,7 +174,7 @@ function MultiSelect({
   );
 }
 
-export function PackingClient({ isAdmin }: { isAdmin: boolean; admin?: boolean }) {
+export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; admin?: boolean; canDelete?: boolean }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -644,7 +644,7 @@ export function PackingClient({ isAdmin }: { isAdmin: boolean; admin?: boolean }
                   <td className="erp-stack-full">
                     {isAdmin && (
                       <div className="flex flex-wrap items-center gap-2">
-                        {!fixed && rules.length > 1 && (
+                        {canDelete && !fixed && rules.length > 1 && (
                           <button type="button" aria-label="Remove rule" title="Remove rule" onClick={() => removeRule(item.id, rule.key)} className="grid h-9 w-9 place-items-center rounded-lg bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]">×</button>
                         )}
                         {i === rules.length - 1 && note && <span className={`basis-full text-xs font-semibold ${note.ok ? "text-emerald-700" : "text-red-700"}`}>{note.text}</span>}

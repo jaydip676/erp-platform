@@ -18,7 +18,7 @@ export default async function MaterialsPage() {
   }
   return (
     <ErpShell user={user} title="Inward Material">
-      <MaterialsClient admin={user.role === "admin"} allowed={(["RAW", "STORE", "POUCH"] as const).filter((t) => perms.includes(`materials.${t.toLowerCase()}`))} />
+      <MaterialsClient admin={user.role === "admin"} perms={perms} allowed={(["RAW", "STORE", "POUCH"] as const).filter((t) => perms.includes(`materials.${t.toLowerCase()}.view`))} />
     </ErpShell>
   );
 }

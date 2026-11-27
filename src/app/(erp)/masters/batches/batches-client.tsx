@@ -28,7 +28,7 @@ type Line = { material_id: number; cons_qty: string };
 const qtyFormat = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: false });
 const fmtQty = (n: number) => qtyFormat.format(Number(n) || 0);
 
-export function BatchesClient({ isAdmin }: { isAdmin: boolean }) {
+export function BatchesClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canDelete?: boolean }) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ready, setReady] = useState(false);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -242,7 +242,7 @@ export function BatchesClient({ isAdmin }: { isAdmin: boolean }) {
                       </svg>
                     </button>
                   )}
-                  {isAdmin && (
+                  {canDelete && (
                     <button
                       type="button"
                       aria-label={`Delete ${r.name || r.code}`}

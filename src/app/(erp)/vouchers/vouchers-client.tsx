@@ -5,6 +5,7 @@ import { SkeletonRows } from "@/components/skeleton";
 import { Banner } from "@/components/banner";
 import { VoucherAdminActions, type ActionResult } from "@/components/voucher-admin";
 import { api } from "@/lib/client-api";
+import { mayOnVoucherType } from "@/lib/permissions";
 import { showDate, todayISO } from "@/lib/dates";
 
 type Voucher = {
@@ -56,7 +57,10 @@ function addDays(iso: string, n: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export function VouchersClient({ admin = false }: { admin?: boolean }) {
+export function VouchersClient({ perms = [] }: { perms?: string[] }) {
+  // Edit / Delete show on a voucher when the user has that right on its section (the server checks the exact section).
+  const rightOn = (type: string, a: "edit" | "delete") => mayOnVoucherType(perms, type, a);
+  const admin = TYPES.some(([t]) => t && (rightOn(t, "edit") || rightOn(t, "delete")));
   const today = todayISO();
   const [from, setFrom] = useState(addDays(today, -29));
   const [to, setTo] = useState(today);
@@ -96,7 +100,7 @@ export function VouchersClient({ admin = false }: { admin?: boolean }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="mb-1 text-lg font-semibold">Vouchers</h2>
-          <p className="erp-hint !mb-0">Click a voucher to see the stock it moved.{admin ? " Only an admin can edit or delete a voucher." : ""}</p>
+          <p className="erp-hint !mb-0">Click a voucher to see the stock it moved.{admin ? " Edit and Delete show where you have those rights." : ""}</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="erp-label">
@@ -156,7 +160,7 @@ export function VouchersClient({ admin = false }: { admin?: boolean }) {
                     </td>
                     {admin && (
                       <td className="text-right">
-                        <VoucherAdminActions v={v} onResult={setMsg} onChanged={() => { setDetail({}); setOpen(null); load(); }} />
+                        <VoucherAdminActions v={v} canEdit={rightOn(v.type_code, "edit")} canDelete={rightOn(v.type_code, "delete")} onResult={setMsg} onChanged={() => { setDetail({}); setOpen(null); load(); }} />
                       </td>
                     )}
                   </tr>

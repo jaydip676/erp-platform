@@ -317,7 +317,7 @@ async function blockers(item: { id: number; code: string; name: string; group: s
 
 export async function DELETE(req: Request) {
   try {
-    await requirePerm(req, "masters.items.edit");
+    await requirePerm(req, "masters.items.delete");
     const id = z.number().int().parse(Number(new URL(req.url).searchParams.get("id")));
     const item = await prisma.inventoryItem.findFirst({ where: { id, active: true } });
     if (!item) throw new ApiError("Item not found", 404);

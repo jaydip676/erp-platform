@@ -18,7 +18,7 @@ export default async function MixingPage() {
   }
   return (
     <ErpShell user={user} title="Mixing Department">
-      <MixingClient isAdmin={user.role === "admin"} allowed={(["master", "final"] as const).filter((t) => perms.includes(`mixing.${t}`))} />
+      <MixingClient perms={perms} allowed={(["master", "final"] as const).filter((t) => perms.includes(`mixing.${t}.view`))} />
     </ErpShell>
   );
 }

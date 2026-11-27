@@ -1,5 +1,6 @@
 "use client";
 
+import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
 import { useSubmit } from "@/lib/use-submit";
@@ -15,7 +16,9 @@ type Target = { key: number; size: string; qty: string };
 
 const byNumber = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
 
-export function TransferClient({ isAdmin }: { isAdmin: boolean }) {
+export function TransferClient({ canEdit = false, canDelete = false }: { canEdit?: boolean; canDelete?: boolean }) {
+  const limits = useDateLimits();
+  const dateOk = useDateAllowed();
   const confirm = useConfirm();
   const [sizes, setSizes] = useState<string[]>([]);
   const [stock, setStock] = useState<StockRow[]>([]);
@@ -140,13 +143,14 @@ export function TransferClient({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-4">
+      {canEdit ? (
       <div className="erp-panel">
         <h2 className="text-lg font-semibold">Green Tube Transfer</h2>
         <p className="erp-hint">Moves green tubes (after Step 1) from one size to one or more other sizes. The PCS taken out must equal the PCS added. Usual sizes are suggested first; any other size can be chosen.</p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="erp-label">
             Date
-            <input className="erp-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <label className="erp-label">
             Transfer from (size)
@@ -233,6 +237,12 @@ export function TransferClient({ isAdmin }: { isAdmin: boolean }) {
           </button>
         </div>
       </div>
+      ) : (
+        <>
+          <p className="erp-hint">You can view transfers only.</p>
+          {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
+        </>
+      )}
 
       <div className="erp-panel">
         <h3 className="text-base font-semibold">Recent transfers</h3>
@@ -246,7 +256,7 @@ export function TransferClient({ isAdmin }: { isAdmin: boolean }) {
                 <th className="text-right">PCS</th>
                 <th>To</th>
                 <th>Remarks</th>
-                {isAdmin && <th className="w-20" />}
+                {canDelete && <th className="w-20" />}
               </tr>
             </thead>
             <tbody>
@@ -261,7 +271,7 @@ export function TransferClient({ isAdmin }: { isAdmin: boolean }) {
                     <td className="text-right tabular-nums">{t.from_qty}</td>
                     <td>{t.to.map((x) => `${x.size} (${x.qty})`).join(", ")}</td>
                     <td className="text-[#737373]">{t.notes}</td>
-                    {isAdmin && <td className="text-right">{!voided && <button type="button" className="text-sm font-semibold text-[#737373] no-underline hover:text-rose-700" onClick={() => remove(t.voucher_no)}>Remove</button>}</td>}
+                    {canDelete && <td className="text-right">{!voided && dateOk(t.date) && <button type="button" className="text-sm font-semibold text-[#737373] no-underline hover:text-rose-700" onClick={() => remove(t.voucher_no)}>Remove</button>}</td>}
                   </tr>
                 );
               })}

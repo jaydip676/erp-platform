@@ -6,7 +6,7 @@ import { api, ApiClientError } from "@/lib/client-api";
 import { useSubmit } from "@/lib/use-submit";
 import { Banner } from "@/components/banner";
 import { useConfirm } from "@/components/confirm";
-import { PERMISSION_PAGES, normalizePermissions } from "@/lib/permissions";
+import { ACTION_LABEL, ALL_PERMISSIONS, PERMISSION_PAGES, itemKeys, normalizePermissions, type Action } from "@/lib/permissions";
 
 type User = {
   id: number;
@@ -15,26 +15,46 @@ type User = {
   role: "admin" | "user";
   active: boolean;
   permissions: string[];
+  entry_days: number | null;
   created_at: string | null;
   last_login_at: string | null;
 };
-type Form = { id: number | null; username: string; display_name: string; password: string; role: "admin" | "user"; permissions: string[] };
+type Form = { id: number | null; username: string; display_name: string; password: string; role: "admin" | "user"; permissions: string[]; entry_days: string };
 
-const EMPTY: Form = { id: null, username: "", display_name: "", password: "", role: "user", permissions: [] };
+const EMPTY: Form = { id: null, username: "", display_name: "", password: "", role: "user", permissions: [], entry_days: "" };
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Never";
 
+const daysValue = (v: string) => (v.trim() === "" ? null : Number(v));
+
+const ACTIONS: Action[] = ["view", "edit", "delete"];
+
 function PermissionMatrix({ value, onChange, disabled }: { value: string[]; onChange: (next: string[]) => void; disabled?: boolean }) {
   const set = new Set(value);
+  // Turning off View also turns off Edit and Delete of that section; turning on Edit or Delete adds View.
   const toggle = (keys: string[], on: boolean) => {
     const next = new Set(value);
-    for (const k of keys) on ? next.add(k) : next.delete(k);
+    for (const k of keys) {
+      if (on) next.add(k);
+      else {
+        next.delete(k);
+        if (k.endsWith(".view")) {
+          const base = k.slice(0, -5);
+          next.delete(`${base}.edit`);
+          next.delete(`${base}.delete`);
+        }
+      }
+    }
+    // A page with nothing ticked inside it is closed too.
+    for (const p of PERMISSION_PAGES) {
+      if (!on && p.items.length > 0 && !p.items.some((i) => itemKeys(i).some((k) => next.has(k)))) next.delete(p.view);
+    }
     onChange(normalizePermissions([...next]));
   };
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="erp-btn erp-btn-secondary" disabled={disabled} onClick={() => onChange(normalizePermissions(PERMISSION_PAGES.flatMap((p) => [p.view, ...p.items.map((i) => i.key)])))}>
+        <button type="button" className="erp-btn erp-btn-secondary" disabled={disabled} onClick={() => onChange(normalizePermissions(ALL_PERMISSIONS))}>
           Select everything
         </button>
         <button type="button" className="erp-btn erp-btn-secondary" disabled={disabled} onClick={() => onChange([])}>
@@ -44,7 +64,7 @@ function PermissionMatrix({ value, onChange, disabled }: { value: string[]; onCh
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         {PERMISSION_PAGES.map((p) => {
           const pageOn = set.has(p.view);
-          const childKeys = p.items.map((i) => i.key);
+          const childKeys = p.items.flatMap(itemKeys);
           const childOn = childKeys.filter((k) => set.has(k)).length;
           return (
             <div key={p.page} className={`rounded-lg border px-3 py-2 ${pageOn ? "border-[#171717] bg-white" : "border-[#e5e5e5] bg-[#fafafa]"}`}>
@@ -55,8 +75,12 @@ function PermissionMatrix({ value, onChange, disabled }: { value: string[]; onCh
                     className="h-4 w-4 accent-[#171717]"
                     checked={pageOn}
                     disabled={disabled}
-                    // Turning a page off also turns off everything inside it.
-                    onChange={(e) => toggle(e.target.checked ? [p.view] : [p.view, ...childKeys], e.target.checked)}
+                    // A page with sections opens with View on all of them; turning it off clears everything inside.
+                    onChange={(e) =>
+                      e.target.checked
+                        ? toggle([p.view, ...p.items.map((i) => `${i.base}.view`)], true)
+                        : onChange(normalizePermissions(value.filter((k) => k !== p.view && !childKeys.includes(k))))
+                    }
                   />
                   {p.label}
                 </label>
@@ -65,23 +89,53 @@ function PermissionMatrix({ value, onChange, disabled }: { value: string[]; onCh
                     type="button"
                     className="text-xs font-semibold text-[#737373] hover:text-[#171717] disabled:opacity-40"
                     disabled={disabled}
-                    onClick={() => toggle([p.view, ...childKeys], childOn < childKeys.length)}
+                    onClick={() =>
+                      childOn < childKeys.length
+                        ? toggle([p.view, ...childKeys], true)
+                        : onChange(normalizePermissions(value.filter((k) => k !== p.view && !childKeys.includes(k))))
+                    }
                   >
                     {childOn < childKeys.length ? "All" : "None"}
                   </button>
                 )}
               </div>
-              {childKeys.length > 0 && (
-                <div className="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 pl-6 sm:grid-cols-2">
-                  {p.items.map((i) => (
-                    <label key={i.key} className="flex cursor-pointer items-start gap-2 text-[13px] text-[#404040]" title={i.hint}>
-                      <input type="checkbox" className="mt-0.5 h-3.5 w-3.5 accent-[#171717]" checked={set.has(i.key)} disabled={disabled} onChange={(e) => toggle([i.key], e.target.checked)} />
-                      <span>{i.label}</span>
-                    </label>
-                  ))}
-                </div>
+              {p.items.length > 0 && (
+                <table className="mt-1.5 w-full text-[13px]">
+                  <thead>
+                    <tr className="text-[11px] text-[#a3a3a3]">
+                      <th className="py-1 pl-6 text-left font-medium" />
+                      {ACTIONS.map((a) => <th key={a} className="w-16 py-1 text-center font-medium">{ACTION_LABEL[a]}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {p.items.map((i) => (
+                      <tr key={i.base} className="border-t border-[#f0f0f0]" title={i.hint}>
+                        <td className="py-1.5 pl-6 text-[#404040]">{i.label}</td>
+                        {ACTIONS.map((a) => {
+                          const key = `${i.base}.${a}`;
+                          return (
+                            <td key={a} className="py-1.5 text-center">
+                              {i.actions.includes(a) ? (
+                                <input
+                                  type="checkbox"
+                                  aria-label={`${i.label} ${ACTION_LABEL[a]}`}
+                                  className="h-3.5 w-3.5 accent-[#171717]"
+                                  checked={set.has(key)}
+                                  disabled={disabled}
+                                  onChange={(e) => toggle(e.target.checked ? [p.view, key] : [key], e.target.checked)}
+                                />
+                              ) : (
+                                <span className="text-[#d4d4d4]">–</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
-              {childKeys.length === 0 && <p className="mt-1 pl-6 text-xs text-[#a3a3a3]">Open and view this page.</p>}
+              {p.items.length === 0 && <p className="mt-1 pl-6 text-xs text-[#a3a3a3]">Open and view this page.</p>}
             </div>
           );
         })}
@@ -114,12 +168,12 @@ export function UsersClient({ meId }: { meId: number }) {
     if (!form) return;
     try {
       if (form.id == null) {
-        await api("/api/users", { method: "POST", body: JSON.stringify({ username: form.username, password: form.password, display_name: form.display_name, role: form.role, permissions: form.permissions }) });
+        await api("/api/users", { method: "POST", body: JSON.stringify({ username: form.username, password: form.password, display_name: form.display_name, role: form.role, permissions: form.permissions, entry_days: daysValue(form.entry_days) }) });
         setMsg({ ok: true, text: `User ${form.username} created.` });
       } else {
         await api("/api/users", {
           method: "PATCH",
-          body: JSON.stringify({ id: form.id, display_name: form.display_name, role: form.role, permissions: form.permissions, ...(form.password ? { password: form.password } : {}) }),
+          body: JSON.stringify({ id: form.id, display_name: form.display_name, role: form.role, permissions: form.permissions, entry_days: daysValue(form.entry_days), ...(form.password ? { password: form.password } : {}) }),
         });
         setMsg({ ok: true, text: `${form.username} saved.${form.password ? " New password set." : ""}` });
       }
@@ -159,6 +213,7 @@ export function UsersClient({ meId }: { meId: number }) {
     if (form.id == null && form.password.length < 6) issues.push("Password needs at least 6 characters.");
     if (form.id != null && form.password && form.password.length < 6) issues.push("New password needs at least 6 characters.");
     if (form.role === "user" && pageCount(form.permissions).length === 0) issues.push("Tick at least one page, or the user will see nothing.");
+    if (form.role === "user" && form.entry_days.trim() !== "" && !/^\d{1,3}$/.test(form.entry_days.trim())) issues.push("Entry days must be a whole number (0 = today only), or empty for no limit.");
   }
   const isMe = form?.id === meId;
 
@@ -196,7 +251,29 @@ export function UsersClient({ meId }: { meId: number }) {
             {form.role === "admin" ? (
               <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">Admins have every permission and can manage users.</p>
             ) : (
-              <PermissionMatrix value={form.permissions} onChange={(permissions) => setForm({ ...form, permissions })} />
+              <>
+                <label className="erp-label mb-3 max-w-md">
+                  Entry days (back-dating limit)
+                  <input
+                    className="erp-input"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1}
+                    placeholder="Empty = no limit"
+                    value={form.entry_days}
+                    onChange={(e) => setForm({ ...form, entry_days: e.target.value })}
+                  />
+                  <span className="text-xs font-normal text-[#737373]">
+                    {form.entry_days.trim() === ""
+                      ? "No limit: this user can add, edit and delete entries on any date."
+                      : Number(form.entry_days) === 0
+                        ? "Only today: entries can be added, edited and deleted for today only."
+                        : `Entries can be added, edited and deleted only from ${form.entry_days} day${form.entry_days.trim() === "1" ? "" : "s"} ago up to today. No future dates.`}
+                  </span>
+                </label>
+                <PermissionMatrix value={form.permissions} onChange={(permissions) => setForm({ ...form, permissions })} />
+              </>
             )}
           </div>
           {issues.length > 0 && <ul className="mt-3 list-disc pl-5 text-xs font-semibold text-rose-700">{issues.map((t) => <li key={t}>{t}</li>)}</ul>}
@@ -249,7 +326,7 @@ export function UsersClient({ meId }: { meId: number }) {
                     <td data-label="Status">{u.active ? <span className="text-xs font-semibold text-emerald-700">Active</span> : <span className="text-xs font-semibold text-rose-700">Disabled</span>}</td>
                     <td className="whitespace-nowrap text-xs text-[#737373]" data-label="Last login">{when(u.last_login_at)}</td>
                     <td className="erp-stack-full whitespace-nowrap text-right max-lg:flex max-lg:flex-wrap max-lg:items-center max-lg:gap-2 max-lg:[&_.erp-btn]:m-0 max-lg:[&_.erp-btn]:flex-1">
-                      <button type="button" className="erp-btn erp-btn-secondary mr-2" onClick={() => { setMsg(null); setForm({ id: u.id, username: u.username, display_name: u.display_name, password: "", role: u.role, permissions: u.permissions }); }}>Edit</button>
+                      <button type="button" className="erp-btn erp-btn-secondary mr-2" onClick={() => { setMsg(null); setForm({ id: u.id, username: u.username, display_name: u.display_name, password: "", role: u.role, permissions: u.permissions, entry_days: u.entry_days == null ? "" : String(u.entry_days) }); }}>Edit</button>
                       {u.id !== meId && (
                         <>
                           <button type="button" className="erp-btn erp-btn-secondary mr-2" onClick={() => setActive(u, !u.active)}>{u.active ? "Disable" : "Enable"}</button>

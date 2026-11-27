@@ -19,6 +19,8 @@ model User {
   displayName  String?    @map("display_name") @db.VarChar(120)
   /// Permission keys (see src/lib/permissions.ts). Admins have every permission.
   permissions  Json       @default("[]")
+  /// Non-admins: how many days back they may add, edit or delete entries (2 = from 2 days ago to today). Empty = no limit.
+  entryDays    Int?       @map("entry_days")
   /// Deleted users stay for history (their vouchers) but can never log in or be listed.
   deleted      Boolean    @default(false)
   createdAt    DateTime   @default(now()) @map("created_at")

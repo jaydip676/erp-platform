@@ -1,0 +1,6 @@
+import { normalizePermissions, mayOnVoucherType, ALL_PERMISSIONS } from "./src/lib/permissions";
+console.log(ALL_PERMISSIONS.length);
+console.log(normalizePermissions(["dispatch.raw.delete"]));
+console.log(normalizePermissions(["materials.raw","mixing.view","dispatch.post"]).join(" "));
+const p = normalizePermissions(["dispatch.raw.edit"]);
+console.log(mayOnVoucherType(p,"DISPATCH","edit"), mayOnVoucherType(p,"DISPATCH","delete"), mayOnVoucherType(p,"PURCHASE","edit"));

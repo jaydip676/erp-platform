@@ -20,8 +20,9 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   return (
     <ErpShell user={user} title="Department Stock">
       <StockTabs
-        isAdmin={user.role === "admin"}
-        allowed={(["stock", "transfer"] as const).filter((t) => perms.includes(t === "stock" ? "stock.departments" : "stock.transfer"))}
+        canEdit={perms.includes("stock.transfer.edit")}
+        canDelete={perms.includes("stock.transfer.delete")}
+        allowed={(["stock", "transfer"] as const).filter((t) => perms.includes(t === "stock" ? "stock.departments.view" : "stock.transfer.view"))}
         initial={tab === "transfer" ? "transfer" : "stock"}
       />
     </ErpShell>

@@ -175,10 +175,23 @@ export async function listDispatches(clientId?: number) {
     }),
     itemNamer(),
   ]);
+  // Which Dispatch sections each dispatch covers, so the page can show and allow only those.
+  const out = rows.flatMap((v) => v.stockLedgers.filter((l) => Number(l.qtyOut) > 0));
+  const batchIds = [...new Set(out.filter((l) => l.itemType === "BATCH").map((l) => l.itemId))];
+  const storeIds = [...new Set(out.filter((l) => l.itemType === "STORE").map((l) => l.itemId))];
+  const [batchTypes, pouchIds] = await Promise.all([
+    batchIds.length ? prisma.batch.findMany({ where: { id: { in: batchIds } }, select: { id: true, batchType: true } }) : [],
+    storeIds.length ? prisma.inventoryItem.findMany({ where: { id: { in: storeIds }, group: "Pouch Item" }, select: { id: true } }) : [],
+  ]);
+  const masterIds = new Set(batchTypes.filter((b) => b.batchType === "MASTER").map((b) => b.id));
+  const pouch = new Set(pouchIds.map((i) => i.id));
+  const kindOf = (t: string, id: number) =>
+    t === "PRODUCT" ? "FG" : t === "RAW" ? "RAW" : t === "BATCH" ? (masterIds.has(id) ? "MASTER" : "FINAL") : pouch.has(id) ? "POUCH" : "STORE";
   return rows.map((v) => ({
     voucher_no: v.voucherNo,
     date: v.voucherDate.toISOString().slice(0, 10),
     status: v.status,
+    kinds: [...new Set(v.stockLedgers.filter((l) => Number(l.qtyOut) > 0).map((l) => kindOf(l.itemType, l.itemId)))],
     client: v.client?.name ?? "",
     by: shownUsername(v.creator?.username),
     notes: v.notes,

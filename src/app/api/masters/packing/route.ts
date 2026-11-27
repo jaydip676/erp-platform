@@ -212,7 +212,7 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    await requirePerm(req, "masters.packing.edit");
+    await requirePerm(req, "masters.packing.delete");
     const id = z.number().int().parse(Number(new URL(req.url).searchParams.get("id")));
     const row = await prisma.packingConsumption.findUnique({ where: { id }, include: { item: true } });
     if (!row) throw new Error("Packing item not found.");

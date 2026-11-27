@@ -1,5 +1,6 @@
 "use client";
 
+import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiClientError } from "@/lib/client-api";
 import { useSubmit } from "@/lib/use-submit";
@@ -15,7 +16,7 @@ type GroupOption = { group: string; kg: number; batches: number };
 type RawOption = { item_id: number; name: string; unit: string; balance: number };
 type StoreOption = RawOption & { group: string };
 type Options = { fg: FgOption[]; master: GroupOption[]; final: GroupOption[]; raw: RawOption[]; store: StoreOption[] };
-type History = { voucher_no: string; date: string; status: string; client: string; by: string; notes: string | null; lines: { item: string; qty: number; unit: string }[] };
+type History = { voucher_no: string; date: string; status: string; kinds: Kind[]; client: string; by: string; notes: string | null; lines: { item: string; qty: number; unit: string }[] };
 type FgLine = { key: number; kind: "FG"; product_id: number; label: string; qty: number };
 type BatchLine = { key: number; kind: "MASTER" | "FINAL"; group: string; label: string; kg: number };
 type ItemLine = { key: number; kind: "RAW" | "STORE"; item_id: number; label: string; qty: number; unit: string; what: string };
@@ -36,8 +37,18 @@ const byNumber = (a: string, b: string) => a.localeCompare(b, undefined, { numer
 const fmt = (n: number) => Number(n.toFixed(3)).toLocaleString("en-IN");
 const emptyOptions: Options = { fg: [], master: [], final: [], raw: [], store: [] };
 
-export function DispatchClient({ canPost, canClients, canRemove }: { canPost: boolean; canClients: boolean; canRemove: boolean }) {
+export function DispatchClient({ perms = [] }: { perms?: string[] }) {
   const confirm = useConfirm();
+  const limits = useDateLimits();
+  const dateOk = useDateAllowed();
+  // Each Dispatch section (Finished Goods, Master Batches, …) has its own View / Edit / Delete.
+  const right = (k: Kind, a: "view" | "edit" | "delete") => perms.includes(`dispatch.${k.toLowerCase()}.${a}`);
+  const viewKinds = KINDS.filter((k) => right(k.id, "view"));
+  const editKinds = KINDS.filter((k) => right(k.id, "edit"));
+  const canPost = editKinds.length > 0;
+  const canClients = perms.includes("dispatch.clients.edit");
+  const canRemove = (h: History) => h.status !== "VOID" && h.kinds.length > 0 && h.kinds.every((k) => right(k, "delete")) && dateOk(h.date);
+  const anyRemove = KINDS.some((k) => right(k.id, "delete"));
   const [clients, setClients] = useState<Client[]>([]);
   const [options, setOptions] = useState<Options>(emptyOptions);
   const [history, setHistory] = useState<History[]>([]);
@@ -50,7 +61,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Line picker
-  const [kind, setKind] = useState<Kind>("FG");
+  const [kind, setKind] = useState<Kind>(editKinds[0]?.id ?? "FG");
   const [size, setSize] = useState("");
   const [valve, setValve] = useState("");
   const [brand, setBrand] = useState("");
@@ -197,7 +208,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <label className="erp-label">
               Date
-              <input className="erp-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
             <label className="erp-label">
               Client
@@ -205,7 +216,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
                 <option value="">Select client</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.name}{c.city ? ` · ${c.city}` : ""}</option>)}
               </select>
-              {(canClients || canPost) && !adding && (
+              {canClients && !adding && (
                 <button type="button" className="mt-1 text-left text-xs font-semibold text-[#525252] hover:text-black" onClick={() => setAdding(true)}>+ New client</button>
               )}
             </label>
@@ -216,7 +227,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
           </div>
 
           <div className="mt-5">
-            <Tabs size="sm" tabs={KINDS.map((k) => ({ id: k.id, label: k.label }))} value={kind} onChange={(id) => chooseKind(id as Kind)} className="mb-3" />
+            <Tabs size="sm" tabs={editKinds.map((k) => ({ id: k.id, label: k.label }))} value={kind} onChange={(id) => chooseKind(id as Kind)} className="mb-3" />
             {kind === "FG" ? (
               <div className="grid gap-3 rounded-lg border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_8rem_auto] lg:items-end">
                 <label className="erp-label">Size
@@ -313,12 +324,12 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
         <div className="mt-2 overflow-x-auto">
           <table className="erp-table">
             <thead>
-              <tr><th>Voucher</th><th className="w-28">Date</th><th>Client</th><th>Sent</th><th>Remarks</th>{canRemove && <th className="w-20" />}</tr>
+              <tr><th>Voucher</th><th className="w-28">Date</th><th>Client</th><th>Sent</th><th>Remarks</th>{anyRemove && <th className="w-20" />}</tr>
             </thead>
             <tbody>
               {!ready && <SkeletonRows rows={4} cols={5} />}
               {ready && history.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-[#a3a3a3]">No dispatches yet.</td></tr>}
-              {history.map((h) => {
+              {history.filter((h) => h.kinds.every((k) => viewKinds.some((v) => v.id === k))).map((h) => {
                 const voided = h.status === "VOID";
                 return (
                   <tr key={h.voucher_no} className={voided ? "text-[#a3a3a3] line-through" : ""}>
@@ -327,7 +338,7 @@ export function DispatchClient({ canPost, canClients, canRemove }: { canPost: bo
                     <td>{h.client}</td>
                     <td>{h.lines.map((l) => `${l.item} (${fmt(l.qty)} ${l.unit})`).join(", ")}</td>
                     <td className="text-[#737373]">{h.notes}</td>
-                    {canRemove && <td className="text-right">{!voided && <button type="button" className="text-sm font-semibold text-[#737373] no-underline hover:text-rose-700" onClick={() => remove(h.voucher_no)}>Remove</button>}</td>}
+                    {anyRemove && <td className="text-right">{canRemove(h) && <button type="button" className="text-sm font-semibold text-[#737373] no-underline hover:text-rose-700" onClick={() => remove(h.voucher_no)}>Remove</button>}</td>}
                   </tr>
                 );
               })}

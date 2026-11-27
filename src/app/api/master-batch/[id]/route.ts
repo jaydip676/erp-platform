@@ -1,4 +1,5 @@
-import { requireAdmin } from "@/lib/access";
+import { requireUser } from "@/lib/auth";
+import { assertBatchRight } from "@/lib/erp/rights";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { jsonError } from "@/lib/api-route";
@@ -12,8 +13,10 @@ async function batchId(ctx: Ctx) {
 
 export async function DELETE(req: Request, ctx: Ctx) {
   try {
-    const user = await requireAdmin(req);
-    return NextResponse.json(await deleteMasterBatch(user, await batchId(ctx)));
+    const user = await requireUser(req);
+    const id = await batchId(ctx);
+    await assertBatchRight(user, id, "delete");
+    return NextResponse.json(await deleteMasterBatch(user, id));
   } catch (e) {
     return jsonError(e);
   }

@@ -30,11 +30,12 @@ const PERM: Record<Tab, string> = {
   opening: "masters.opening",
 };
 
-/** Each tab shows only with its "view" permission; its add / edit / delete controls need "edit". */
+/** Each tab shows only with its "view" permission; add and edit need "edit"; delete needs "delete". */
 export function MastersTabs({ perms, initial, admin = false }: { perms: string[]; initial?: string; admin?: boolean }) {
   const tabs = TABS.filter(([id]) => perms.includes(`${PERM[id]}.view`));
   const [tab, setTab] = useState<Tab | undefined>(tabs.some(([id]) => id === initial) ? (initial as Tab) : tabs[0]?.[0]);
   const edit = (id: Tab) => perms.includes(`${PERM[id]}.edit`);
+  const del = (id: Tab) => perms.includes(`${PERM[id]}.delete`);
 
   function pick(id: Tab) {
     setTab(id);
@@ -46,14 +47,15 @@ export function MastersTabs({ perms, initial, admin = false }: { perms: string[]
   return (
     <div className="space-y-4">
       <Tabs tabs={tabs.map(([id, label]) => ({ id, label }))} value={tab} onChange={pick} />
-      {tab === "items" && <InventoryClient isAdmin={edit("items")} />}
-      {tab === "products" && <ProductsClient isAdmin={edit("products")} />}
-      {tab === "batches" && <BatchesClient isAdmin={edit("batches")} />}
-      {tab === "packing" && <PackingClient isAdmin={edit("packing")} admin={admin} />}
-      {tab === "opening" && <OpeningClient isAdmin={edit("opening")} />}
+      {tab === "items" && <InventoryClient isAdmin={edit("items")} canDelete={del("items")} />}
+      {tab === "products" && <ProductsClient isAdmin={edit("products")} canDelete={del("products")} />}
+      {tab === "batches" && <BatchesClient isAdmin={edit("batches")} canDelete={del("batches")} />}
+      {tab === "packing" && <PackingClient isAdmin={edit("packing")} canDelete={del("packing")} admin={admin} />}
+      {tab === "opening" && <OpeningClient isAdmin={edit("opening")} canDelete={del("opening")} />}
       {tab === "groups" && (
         <CodeNameClient
           isAdmin={edit("groups")}
+          canDelete={del("groups")}
           title="Group Entry"
           hint="Groups used on Item Master. Raw Material, Finished Goods, and Store Item are already entered. Add a group here before using it on an item."
           endpoint="/api/masters/groups"
@@ -62,6 +64,7 @@ export function MastersTabs({ perms, initial, admin = false }: { perms: string[]
       {tab === "qualities" && (
         <CodeNameClient
           isAdmin={edit("qualities")}
+          canDelete={del("qualities")}
           title="Quality (Grade) Entry"
           hint="Each grade is a brand, such as cvaz, viaz, or jkc. On Auto Consumption Packing, brand is only for Pouch, Small Pouch, and Big Pouch."
           endpoint="/api/masters/qualities"

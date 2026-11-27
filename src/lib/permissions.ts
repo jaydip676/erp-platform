@@ -3,8 +3,15 @@
  * A page's "view" key is needed to open the page; the other keys unlock its tabs and actions.
  * Safe to import in the browser.
  */
-export type PermItem = { key: string; label: string; hint?: string };
+export type Action = "view" | "edit" | "delete";
+/** One section of a page. Its keys are `${base}.view`, `${base}.edit` (add and change) and `${base}.delete`. */
+export type PermItem = { base: string; label: string; actions: Action[]; hint?: string };
 export type PermPage = { page: string; label: string; href: string; view: string; items: PermItem[] };
+
+const VED: Action[] = ["view", "edit", "delete"];
+const V: Action[] = ["view"];
+
+export const ACTION_LABEL: Record<Action, string> = { view: "View", edit: "Edit", delete: "Delete" };
 
 export const PERMISSION_PAGES: PermPage[] = [
   { page: "dashboard", label: "Dashboard", href: "/dashboard", view: "dashboard.view", items: [] },
@@ -14,9 +21,9 @@ export const PERMISSION_PAGES: PermPage[] = [
     href: "/materials",
     view: "materials.view",
     items: [
-      { key: "materials.raw", label: "Raw Material tab", hint: "See and post raw material receipts" },
-      { key: "materials.store", label: "Store Material tab", hint: "See and post store item receipts" },
-      { key: "materials.pouch", label: "Pouch Material tab", hint: "See and post pouch receipts" },
+      { base: "materials.raw", label: "Raw Material", actions: VED },
+      { base: "materials.store", label: "Store Material", actions: VED },
+      { base: "materials.pouch", label: "Pouch Material", actions: VED },
     ],
   },
   {
@@ -25,8 +32,8 @@ export const PERMISSION_PAGES: PermPage[] = [
     href: "/mixing",
     view: "mixing.view",
     items: [
-      { key: "mixing.master", label: "Master Batch tab", hint: "See and create master batches" },
-      { key: "mixing.final", label: "Final Batch tab", hint: "See and create final batches" },
+      { base: "mixing.master", label: "Master Batch", actions: VED },
+      { base: "mixing.final", label: "Final Batch", actions: VED },
     ],
   },
   {
@@ -35,10 +42,10 @@ export const PERMISSION_PAGES: PermPage[] = [
     href: "/process",
     view: "process.view",
     items: [
-      { key: "process.extrusion", label: "Step 1 · Extrusion" },
-      { key: "process.curing", label: "Step 2 · Press" },
-      { key: "process.inspection", label: "Step 3 · Inspection" },
-      { key: "process.packing", label: "Step 4 · Packing" },
+      { base: "process.extrusion", label: "Step 1 · Extrusion", actions: VED },
+      { base: "process.curing", label: "Step 2 · Press", actions: VED },
+      { base: "process.inspection", label: "Step 3 · Inspection", actions: VED },
+      { base: "process.packing", label: "Step 4 · Packing", actions: VED },
     ],
   },
   {
@@ -47,8 +54,8 @@ export const PERMISSION_PAGES: PermPage[] = [
     href: "/stock",
     view: "stock.view",
     items: [
-      { key: "stock.departments", label: "Department Stock tab" },
-      { key: "stock.transfer", label: "Green Tube Transfer tab", hint: "See and post transfers" },
+      { base: "stock.departments", label: "Department Stock", actions: V },
+      { base: "stock.transfer", label: "Green Tube Transfer", actions: VED },
     ],
   },
   {
@@ -57,8 +64,13 @@ export const PERMISSION_PAGES: PermPage[] = [
     href: "/dispatch",
     view: "dispatch.view",
     items: [
-      { key: "dispatch.post", label: "Post a dispatch", hint: "Send finished goods and batches to a client" },
-      { key: "dispatch.clients", label: "Add and edit clients" },
+      { base: "dispatch.fg", label: "Finished Goods", actions: VED },
+      { base: "dispatch.master", label: "Master Batches", actions: VED },
+      { base: "dispatch.final", label: "Final Batches", actions: VED },
+      { base: "dispatch.raw", label: "Raw Material", actions: VED },
+      { base: "dispatch.store", label: "Store Material", actions: VED },
+      { base: "dispatch.pouch", label: "Pouch Material", actions: VED },
+      { base: "dispatch.clients", label: "Clients", actions: VED },
     ],
   },
   { page: "rejections", label: "Rejections", href: "/rejections", view: "rejections.view", items: [] },
@@ -70,39 +82,68 @@ export const PERMISSION_PAGES: PermPage[] = [
     href: "/masters",
     view: "masters.view",
     items: [
-      { key: "masters.items.view", label: "Item Master · view" },
-      { key: "masters.items.edit", label: "Item Master · add, edit, delete" },
-      { key: "masters.products.view", label: "Product List · view" },
-      { key: "masters.products.edit", label: "Product List · add, edit, delete" },
-      { key: "masters.batches.view", label: "Batch Master · view" },
-      { key: "masters.batches.edit", label: "Batch Master · add, edit, delete" },
-      { key: "masters.packing.view", label: "Auto Consumption Packing · view" },
-      { key: "masters.packing.edit", label: "Auto Consumption Packing · edit" },
-      { key: "masters.groups.view", label: "Group Entry · view" },
-      { key: "masters.groups.edit", label: "Group Entry · add, edit, delete" },
-      { key: "masters.qualities.view", label: "Quality (Grade) · view" },
-      { key: "masters.qualities.edit", label: "Quality (Grade) · add, edit, delete" },
-      { key: "masters.opening.view", label: "Opening Stock · view" },
-      { key: "masters.opening.edit", label: "Opening Stock · post" },
+      { base: "masters.items", label: "Item Master", actions: VED },
+      { base: "masters.products", label: "Product List", actions: VED },
+      { base: "masters.batches", label: "Batch Master", actions: VED },
+      { base: "masters.packing", label: "Auto Consumption Packing", actions: VED },
+      { base: "masters.groups", label: "Group Entry", actions: VED },
+      { base: "masters.qualities", label: "Quality (Grade)", actions: VED },
+      { base: "masters.opening", label: "Opening Stock", actions: VED },
     ],
   },
 ];
 
-export const ALL_PERMISSIONS: string[] = PERMISSION_PAGES.flatMap((p) => [p.view, ...p.items.map((i) => i.key)]);
+export const itemKeys = (i: PermItem) => i.actions.map((a) => `${i.base}.${a}`);
+export const ALL_PERMISSIONS: string[] = PERMISSION_PAGES.flatMap((p) => [p.view, ...p.items.flatMap(itemKeys)]);
 const KNOWN = new Set(ALL_PERMISSIONS);
 
+const DISPATCH_KINDS = ["fg", "master", "final", "raw", "store", "pouch"];
+/** Keys from before View / Edit / Delete, mapped to the new ones ("see and post" became view + edit). */
+function legacy(k: string): string[] {
+  if (/^(materials\.(raw|store|pouch)|mixing\.(master|final)|process\.(extrusion|curing|inspection|packing)|stock\.transfer)$/.test(k)) return [`${k}.view`, `${k}.edit`];
+  if (k === "stock.departments") return ["stock.departments.view"];
+  if (k === "dispatch.post") return DISPATCH_KINDS.flatMap((d) => [`dispatch.${d}.view`, `dispatch.${d}.edit`]);
+  if (k === "dispatch.clients") return ["dispatch.clients.view", "dispatch.clients.edit"];
+  return [k];
+}
+
 /**
- * Cleans a stored list: drops unknown keys and adds what a key depends on
- * (any key on a page opens the page; "edit" on a Masters tab includes "view").
+ * Cleans a stored list: maps old keys, drops unknown ones, and adds what a key depends on
+ * (edit or delete includes view; anything on a page opens the page).
  */
 export function normalizePermissions(input: unknown): string[] {
   const set = new Set<string>();
-  for (const k of Array.isArray(input) ? input : []) if (typeof k === "string" && KNOWN.has(k)) set.add(k);
-  for (const page of PERMISSION_PAGES) {
-    if (page.items.some((i) => set.has(i.key))) set.add(page.view);
+  for (const raw of Array.isArray(input) ? input : []) {
+    if (typeof raw !== "string") continue;
+    for (const k of legacy(raw)) if (KNOWN.has(k)) set.add(k);
   }
-  for (const k of [...set]) if (k.startsWith("masters.") && k.endsWith(".edit")) set.add(k.replace(/\.edit$/, ".view"));
+  for (const k of [...set]) if (/\.(edit|delete)$/.test(k)) set.add(k.replace(/\.(edit|delete)$/, ".view"));
+  for (const page of PERMISSION_PAGES) {
+    if (page.items.some((i) => itemKeys(i).some((k) => set.has(k)))) set.add(page.view);
+  }
   return ALL_PERMISSIONS.filter((k) => set.has(k));
+}
+
+/** The section a voucher type belongs to, for its edit and delete rights. Dispatch and store receipts depend on their lines. */
+export const VOUCHER_SECTION: Record<string, string | string[]> = {
+  PURCHASE: "materials.raw",
+  STORE_PURCHASE: ["materials.store", "materials.pouch"],
+  MASTER_BATCH: "mixing.master",
+  FINAL_BATCH: "mixing.final",
+  EXTRUSION: "process.extrusion",
+  CURING: "process.curing",
+  INSPECTION: "process.inspection",
+  PACKING: "process.packing",
+  TRANSFER: "stock.transfer",
+  OPENING: "masters.opening",
+  DISPATCH: DISPATCH_KINDS.map((d) => `dispatch.${d}`),
+};
+
+/** For showing buttons: true when the user may do this to at least one section the voucher type can belong to. */
+export function mayOnVoucherType(perms: string[], type: string, action: Action) {
+  const s = VOUCHER_SECTION[type];
+  if (!s) return false;
+  return (Array.isArray(s) ? s : [s]).some((b) => perms.includes(`${b}.${action}`));
 }
 
 /** The first page a user may open, or null when they may open nothing. */

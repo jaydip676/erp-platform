@@ -1,3 +1,4 @@
+import { assertEntryDate } from "@/lib/erp/rights";
 import { can, requirePerm } from "@/lib/access";
 import { ForbiddenError } from "@/lib/auth";
 import { NextResponse } from "next/server";
@@ -43,12 +44,13 @@ const receiptSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const user = await requirePerm(req, "materials.store", "materials.pouch");
+    const user = await requirePerm(req, "materials.store.edit", "materials.pouch.edit");
     const body = receiptSchema.parse(await req.json());
     const item = await prisma.inventoryItem.findUnique({ where: { id: body.store_item_id }, select: { group: true } });
-    if (item && !can(user, item.group === "Pouch Item" ? "materials.pouch" : "materials.store")) {
+    if (item && !can(user, item.group === "Pouch Item" ? "materials.pouch.edit" : "materials.store.edit")) {
       throw new ForbiddenError(`You do not have permission to receive ${item.group === "Pouch Item" ? "pouch" : "store"} material.`);
     }
+    assertEntryDate(user, body.date);
     return NextResponse.json(await postStorePurchase(user, body));
   } catch (e) {
     return jsonError(e);

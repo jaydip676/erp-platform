@@ -132,7 +132,7 @@ export async function POST(req: Request) {
 /** Removes a saved formula from the list. Posted batches are not affected. */
 export async function DELETE(req: Request) {
   try {
-    await requirePerm(req, "masters.batches.edit");
+    await requirePerm(req, "masters.batches.delete");
     const id = z.number().int().parse(Number(new URL(req.url).searchParams.get("id")));
     const recipe = await prisma.recipe.findFirst({ where: { id, active: true } });
     if (!recipe) throw new ApiError("Batch formula not found", 404);

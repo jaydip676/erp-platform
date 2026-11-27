@@ -1,5 +1,6 @@
 "use client";
 
+import { useDateLimits } from "@/components/entry-window";
 import { VoucherAdminActions } from "@/components/voucher-admin";
 import { Tabs } from "@/components/tabs";
 import { PouchNegativeRule } from "@/components/pouch-negative-rule";
@@ -29,7 +30,8 @@ function qty(n: number) {
   return String(Number(n.toFixed(4)));
 }
 
-export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = false }: { allowed?: Tab[]; admin?: boolean }) {
+export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = false, perms = [] }: { allowed?: Tab[]; admin?: boolean; perms?: string[] }) {
+  const limits = useDateLimits();
   const [tab, setTab] = useState<Tab>(allowed[0] ?? "RAW");
   const [raw, setRaw] = useState<Item[]>([]);
   const [store, setStore] = useState<Item[]>([]);
@@ -78,6 +80,10 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
     loadReceipts(tab);
   }, [tab, loadReceipts]);
 
+  const right = (a: "edit" | "delete") => admin || perms.includes(`materials.${tab.toLowerCase()}.${a}`);
+  const canEdit = right("edit");
+  const canDelete = right("delete");
+
   const listFor = (t: Tab) => (t === "RAW" ? raw : t === "STORE" ? store : pouch);
   const items = listFor(tab);
   const selected = items.find((i) => i.id === itemId[tab]);
@@ -122,6 +128,7 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
       <Tabs className="mb-4" tabs={TABS.filter((t) => allowed.includes(t.id)).map((t) => ({ id: t.id, label: t.label, count: listFor(t.id).length }))} value={tab} onChange={switchTab} />
       {tab === "POUCH" && <PouchNegativeRule admin={admin} />}
 
+      {canEdit ? (
       <div className="erp-panel mb-4">
         <h2 className="mb-3 text-lg font-semibold">Purchase Receipt</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -153,7 +160,7 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
           </label>
           <label className="erp-label">
             Date
-            <input className="erp-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
         </div>
         <div className="erp-sticky-bar lg:contents">
@@ -163,6 +170,12 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
         </div>
         {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
       </div>
+      ) : (
+        <>
+          <p className="erp-hint mb-4">You can view this tab only.</p>
+          {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
+        </>
+      )}
 
       <div className="erp-panel">
         <h2 className="mb-2 text-lg font-semibold">{tab === "RAW" ? "Raw Material Stock" : tab === "POUCH" ? "Pouch Material Stock" : "Store Material Stock"}</h2>
@@ -176,7 +189,7 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
         <h2 className="mb-1 text-lg font-semibold">Recent receipts</h2>
         <p className="erp-hint">The last receipts posted for {tab === "RAW" ? "raw materials" : tab === "POUCH" ? "pouch materials" : "store materials"}.</p>
         <DataTable
-          head={admin ? ["Voucher", "Date", "Item", "Quantity", "Status", ""] : ["Voucher", "Date", "Item", "Quantity", "Status"]}
+          head={canEdit || canDelete ? ["Voucher", "Date", "Item", "Quantity", "Status", ""] : ["Voucher", "Date", "Item", "Quantity", "Status"]}
           empty="No receipts yet."
           loading={!receiptsReady}
           rows={receipts
@@ -184,7 +197,7 @@ export function MaterialsClient({ allowed = ["RAW", "STORE", "POUCH"], admin = f
             .slice(0, 15)
             .map((v) => {
               const cells = [v.voucher_no, showDate(v.date), v.items, v.quantity, v.status === "VOID" ? "Deleted" : "Posted"];
-              return admin ? [...cells, <VoucherAdminActions key={v.voucher_no} v={v} onResult={setMsg} onChanged={() => Promise.all([load(), loadReceipts(tab)])} />] : cells;
+              return canEdit || canDelete ? [...cells, <VoucherAdminActions key={v.voucher_no} v={v} canEdit={canEdit} canDelete={canDelete} onResult={setMsg} onChanged={() => Promise.all([load(), loadReceipts(tab)])} />] : cells;
             })}
         />
       </div>

@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    await requirePerm(req, "dispatch.clients", "dispatch.post");
+    await requirePerm(req, "dispatch.clients.edit");
     const b = body.parse(await req.json());
     await assertFree(b.name);
     return NextResponse.json(toJson(await prisma.client.create({ data: b })));
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    await requirePerm(req, "dispatch.clients");
+    await requirePerm(req, "dispatch.clients.edit");
     const b = body.extend({ id: z.number().int() }).parse(await req.json());
     await assertFree(b.name, b.id);
     const { id, ...data } = b;
@@ -61,7 +61,7 @@ export async function PATCH(req: Request) {
 /** A client with past dispatches is kept in the history; it just stops showing in the list. */
 export async function DELETE(req: Request) {
   try {
-    await requirePerm(req, "dispatch.clients");
+    await requirePerm(req, "dispatch.clients.delete");
     const id = z.number().int().parse(Number(new URL(req.url).searchParams.get("id")));
     await prisma.client.update({ where: { id }, data: { active: false } });
     return NextResponse.json({ ok: true });

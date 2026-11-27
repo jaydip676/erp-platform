@@ -1,5 +1,6 @@
 "use client";
 
+import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { useEffect, useMemo, useState } from "react";
 import { SkeletonTable } from "@/components/skeleton";
 import { api, ApiClientError } from "@/lib/client-api";
@@ -49,7 +50,9 @@ const fmt = (n: number) => Number(n.toFixed(3)).toLocaleString("en-IN");
 const tagOf = (f: Formula) => (f.name || f.code).toUpperCase().replace(/[^A-Z0-9]+/g, "") || "MN";
 const stampOf = (iso: string) => iso.slice(2).replaceAll("-", "");
 
-export function OpeningClient({ isAdmin }: { isAdmin: boolean }) {
+export function OpeningClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canDelete?: boolean }) {
+  const dateOk = useDateAllowed();
+  const limits = useDateLimits();
   const confirm = useConfirm();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [inventory, setInventory] = useState<InvItem[]>([]);
@@ -391,7 +394,7 @@ export function OpeningClient({ isAdmin }: { isAdmin: boolean }) {
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="erp-label">
             Opening date (go-live)
-            <input className="erp-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <label className="erp-label md:col-span-2">
             Remarks
@@ -624,7 +627,7 @@ export function OpeningClient({ isAdmin }: { isAdmin: boolean }) {
 
       <div className="erp-panel">
         <h3 className="text-base font-semibold">Posted opening entries</h3>
-        <p className="erp-hint">Open an entry to see every line.{isAdmin ? " Remove takes it back out, as long as nothing from it has been used yet." : ""}</p>
+        <p className="erp-hint">Open an entry to see every line.{canDelete ? " Remove takes it back out, as long as nothing from it has been used yet." : ""}</p>
         {openings.length === 0 && <p className="text-sm text-[#a3a3a3]">No opening stock posted yet.</p>}
         <div className="space-y-2">
           {openings.map((o) => {
@@ -640,7 +643,7 @@ export function OpeningClient({ isAdmin }: { isAdmin: boolean }) {
                     <span className="text-sm text-[#737373]">{showDate(o.date)} · {o.lines.length} lines{o.by ? ` · by ${o.by}` : ""}</span>
                     {voided && <span className="text-xs font-semibold text-rose-700">Removed</span>}
                   </button>
-                  {!voided && isAdmin && <button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700" onClick={() => remove(o.voucher_no)}>Remove</button>}
+                  {!voided && canDelete && dateOk(o.date) && <button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700" onClick={() => remove(o.voucher_no)}>Remove</button>}
                 </div>
                 {isOpen && (
                   <div className="border-t border-[#e5e5e5] px-3 py-2">

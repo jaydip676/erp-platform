@@ -2,7 +2,8 @@ import { shownUsername } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { ForbiddenError, requireUser } from "@/lib/auth";
-import { can, requireAdmin } from "@/lib/access";
+import { can } from "@/lib/access";
+import { assertEntryDate, assertVoucherRight } from "@/lib/erp/rights";
 import { jsonError, parseISODate } from "@/lib/api-route";
 import { prisma } from "@/lib/prisma";
 import { deleteVoucher, editVoucher, voucherEditSchema } from "@/lib/erp/voucher-admin";
@@ -13,16 +14,16 @@ import { ITEM_TYPE_NAME, VOUCHER_TYPE_NAME, itemNamer } from "@/lib/erp/labels";
  * (Inward Material its receipts, Production its steps), so those permissions also allow that type.
  */
 const TYPE_PERMS: Record<string, string[]> = {
-  PURCHASE: ["materials.raw"],
-  STORE_PURCHASE: ["materials.store", "materials.pouch"],
-  MASTER_BATCH: ["mixing.master"],
-  FINAL_BATCH: ["mixing.final"],
-  EXTRUSION: ["process.extrusion"],
-  CURING: ["process.curing"],
-  INSPECTION: ["process.inspection"],
-  PACKING: ["process.packing"],
+  PURCHASE: ["materials.raw.view"],
+  STORE_PURCHASE: ["materials.store.view", "materials.pouch.view"],
+  MASTER_BATCH: ["mixing.master.view"],
+  FINAL_BATCH: ["mixing.final.view"],
+  EXTRUSION: ["process.extrusion.view"],
+  CURING: ["process.curing.view"],
+  INSPECTION: ["process.inspection.view"],
+  PACKING: ["process.packing.view"],
   OPENING: ["masters.opening.view"],
-  TRANSFER: ["stock.transfer"],
+  TRANSFER: ["stock.transfer.view"],
 };
 function assertVoucherAccess(user: Parameters<typeof can>[0], type: string | null) {
   if (can(user, "vouchers.view")) return;
@@ -173,21 +174,26 @@ export async function GET(req: Request) {
 }
 
 
-/** Admin only: edit a voucher (see editVoucher for what each type allows). */
+/** Edit a voucher (see editVoucher for what each type allows). Needs Edit on its section, and both dates in the user's window. */
 export async function PATCH(req: Request) {
   try {
-    const user = await requireAdmin(req);
-    return NextResponse.json(await editVoucher(user, voucherEditSchema.parse(await req.json())));
+    const user = await requireUser(req);
+    const body = voucherEditSchema.parse(await req.json());
+    await assertVoucherRight(user, body.voucher_no, "edit");
+    if (body.date) assertEntryDate(user, body.date);
+    return NextResponse.json(await editVoucher(user, body));
   } catch (e) {
     return jsonError(e);
   }
 }
 
-/** Admin only: delete any voucher, ?no=VOUCHER-NO. */
+/** Delete a voucher, ?no=VOUCHER-NO. Needs Delete on its section, and its date in the user's window. */
 export async function DELETE(req: Request) {
   try {
-    const user = await requireAdmin(req);
-    return NextResponse.json(await deleteVoucher(user, new URL(req.url).searchParams.get("no") ?? ""));
+    const user = await requireUser(req);
+    const no = new URL(req.url).searchParams.get("no") ?? "";
+    await assertVoucherRight(user, no, "delete");
+    return NextResponse.json(await deleteVoucher(user, no));
   } catch (e) {
     return jsonError(e);
   }

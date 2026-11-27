@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Banner } from "@/components/banner";
 import { useConfirm } from "@/components/confirm";
 import { ApiClientError, api } from "@/lib/client-api";
+import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 
 /** What the edit box needs to know about a voucher (a row from /api/vouchers). */
 export type EditTarget = {
@@ -27,11 +28,25 @@ export type ActionResult = { ok: boolean; text: string };
 const RECEIPTS = ["PURCHASE", "STORE_PURCHASE"];
 const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
 
-/** Edit and Delete for one voucher. Only render this for an admin: the server refuses anyone else. */
-export function VoucherAdminActions({ v, onResult, onChanged }: { v: EditTarget; onResult?: (r: ActionResult) => void; onChanged: () => void }) {
+/** Edit and Delete for one voucher, as far as the user has those rights. The server checks them again. */
+export function VoucherAdminActions({
+  v,
+  onResult,
+  onChanged,
+  canEdit = true,
+  canDelete = true,
+}: {
+  v: EditTarget;
+  onResult?: (r: ActionResult) => void;
+  onChanged: () => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
-  if (v.status === "VOID") return null;
+  const dateOk = useDateAllowed();
+  // Outside the user's entry-days window nothing can be changed (the server refuses it too).
+  if (v.status === "VOID" || !dateOk(v.date) || (!canEdit && !canDelete)) return null;
 
   async function remove() {
     const ok = await confirm({
@@ -53,8 +68,8 @@ export function VoucherAdminActions({ v, onResult, onChanged }: { v: EditTarget;
   return (
     <>
       <span className="inline-flex gap-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="text-sm font-semibold text-[#525252] hover:text-black" onClick={() => setEditing(true)}>Edit</button>
-        <button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700" onClick={remove}>Delete</button>
+        {canEdit && <button type="button" className="text-sm font-semibold text-[#525252] hover:text-black" onClick={() => setEditing(true)}>Edit</button>}
+        {canDelete && <button type="button" className="text-sm font-semibold text-[#737373] hover:text-rose-700" onClick={remove}>Delete</button>}
       </span>
       {editing && (
         <EditBox
@@ -85,6 +100,7 @@ function EditBox({ v, onClose, onSaved }: { v: EditTarget; onClose: () => void; 
   const [weight, setWeight] = useState(v.final_weight_kg == null ? "" : String(v.final_weight_kg));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const limits = useDateLimits();
 
   const isReceipt = RECEIPTS.includes(type);
   const isStep = ["EXTRUSION", "CURING", "INSPECTION", "PACKING"].includes(type);
@@ -128,7 +144,7 @@ function EditBox({ v, onClose, onSaved }: { v: EditTarget; onClose: () => void; 
       >
         <h2 className="text-base font-semibold text-[#0a0a0a]">Edit {v.voucher_no}</h2>
         <div className="mt-4 space-y-3">
-          <label className="erp-label">Date<input className="erp-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+          <label className="erp-label">Date<input className="erp-input" type="date" {...limits} value={date} onChange={(e) => setDate(e.target.value)} /></label>
           {isReceipt && <label className="erp-label">Quantity received<input className="erp-input" type="number" inputMode="decimal" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} /></label>}
           {type === "EXTRUSION" && (<>
             <label className="erp-label">Green Tube PCS<input className="erp-input" type="number" inputMode="numeric" min={1} step={1} value={output} onChange={(e) => setOutput(e.target.value)} /></label>

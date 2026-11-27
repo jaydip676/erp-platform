@@ -193,7 +193,7 @@ export async function POST(req: Request) {
 /** Hides one product from the list (active = false). The row stays in the database. */
 export async function DELETE(req: Request) {
   try {
-    await requirePerm(req, "masters.products.edit");
+    await requirePerm(req, "masters.products.delete");
     const id = z.number().int().parse(Number(new URL(req.url).searchParams.get("id")));
     const current = await prisma.catalogItem.findFirst({ where: { id, active: true } });
     if (!current) throw new Error("Product not found.");

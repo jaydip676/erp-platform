@@ -65,7 +65,7 @@ function formatPct(n: number) {
   return `${Number(n.toFixed(2))}%`;
 }
 
-export function ProductsClient({ isAdmin }: { isAdmin: boolean }) {
+export function ProductsClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canDelete?: boolean }) {
   const [items, setItems] = useState<Item[]>([]);
   const [types, setTypes] = useState<ProductType[]>([]);
   const [inventory, setInventory] = useState<Inventory[]>([]);
@@ -267,32 +267,38 @@ export function ProductsClient({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        {/* Same grey segmented switch as the inner tabs on Auto Consumption Packing. */}
+        <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#e5e5e5] bg-[#f4f4f5] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
         <button
           type="button"
-          className={`rounded-full px-3 py-1.5 text-sm font-semibold ${tab === "all" ? "border border-[#171717] bg-[#171717] text-white" : "border border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5]"}`}
+          role="tab"
+          aria-selected={tab === "all"}
+          className={`shrink-0 whitespace-nowrap rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors lg:py-1.5 ${tab === "all" ? "bg-white text-[#171717] shadow-[0_1px_2px_rgb(0_0_0/0.12)]" : "text-[#737373] hover:text-[#171717]"}`}
           onClick={() => setTab("all")}
         >
-          All ({items.length})
+          All<span className="ml-1.5 text-xs text-[#a3a3a3]">{items.length}</span>
         </button>
         {tabTypes.map((t) => {
           const count = items.filter((i) => i.category === t.name).length;
           const active = tab === t.name;
           return (
-            <span key={t.name} className="group relative inline-flex items-center">
+            <span key={t.name} className="group relative inline-flex shrink-0 items-center">
               <button
                 type="button"
-                className={`rounded-full py-1.5 pl-3 text-sm font-semibold max-lg:py-2.5 ${isAdmin && t.id != null ? "pr-3 group-hover:pr-9 group-focus-within:pr-9 max-lg:pr-11" : "pr-3"} ${active ? "border border-[#171717] bg-[#171717] text-white" : "border border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5]"}`}
+                role="tab"
+                aria-selected={active}
+                className={`whitespace-nowrap rounded-lg py-2 pl-3.5 text-[13px] font-semibold transition-colors lg:py-1.5 ${canDelete && t.id != null ? "pr-3.5 group-hover:pr-9 group-focus-within:pr-9 max-lg:pr-10" : "pr-3.5"} ${active ? "bg-white text-[#171717] shadow-[0_1px_2px_rgb(0_0_0/0.12)]" : "text-[#737373] hover:text-[#171717]"}`}
                 onClick={() => setTab(t.name)}
               >
-                {t.name} ({count})
+                {t.name}<span className="ml-1.5 text-xs text-[#a3a3a3]">{count}</span>
               </button>
-              {isAdmin && t.id != null && (
+              {canDelete && t.id != null && (
                 <button
                   type="button"
                   aria-label={`Delete type ${t.name}`}
                   title={`Delete ${t.name}`}
                   onClick={() => deleteType({ id: t.id as number, name: t.name })}
-                  className="absolute right-1 grid h-7 w-7 place-items-center rounded-full bg-[#fef2f2] text-[#dc2626] opacity-0 transition-opacity hover:bg-[#fee2e2] focus:opacity-100 group-hover:opacity-100 max-lg:h-9 max-lg:w-9 max-lg:opacity-100"
+                  className="absolute right-1 grid h-6 w-6 place-items-center rounded-md bg-[#fef2f2] text-[#dc2626] opacity-0 transition-opacity hover:bg-[#fee2e2] focus:opacity-100 group-hover:opacity-100 max-lg:h-7 max-lg:w-7 max-lg:opacity-100"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M3 6h18" />
@@ -306,6 +312,7 @@ export function ProductsClient({ isAdmin }: { isAdmin: boolean }) {
             </span>
           );
         })}
+        </div>
         {isAdmin && !addingType && (
           <button
             type="button"
@@ -374,11 +381,14 @@ export function ProductsClient({ isAdmin }: { isAdmin: boolean }) {
                   <td>{formatKg(r.weight_kg ?? 0)}</td>
                   <td>{formatPct(r.ex_kg ?? 0)}</td>
                   <td>
-                    {isAdmin && (
+                    {(isAdmin || canDelete) && (
                       <div className="flex items-center gap-2">
+                        {isAdmin && (
                         <button type="button" className="erp-btn erp-btn-secondary mt-0" onClick={() => openEdit(r)}>
                           Edit
                         </button>
+                        )}
+                        {canDelete && (
                         <button
                           type="button"
                           aria-label={`Delete ${r.size}`}
@@ -394,6 +404,7 @@ export function ProductsClient({ isAdmin }: { isAdmin: boolean }) {
                             <path d="M14 11v6" />
                           </svg>
                         </button>
+                        )}
                       </div>
                     )}
                   </td>

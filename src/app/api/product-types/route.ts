@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 /** Removes a type and hides its products. Both are soft-deleted (active = false). */
 export async function DELETE(req: Request) {
   try {
-    await requirePerm(req, "masters.products.edit");
+    await requirePerm(req, "masters.products.delete");
     const id = z.number().int().parse(Number(new URL(req.url).searchParams.get("id")));
     const type = await prisma.productType.findUnique({ where: { id } });
     if (!type) throw new ApiError("Product type not found", 404);

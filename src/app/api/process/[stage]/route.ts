@@ -1,3 +1,4 @@
+import { assertEntryDate } from "@/lib/erp/rights";
 import { NextResponse } from "next/server";
 import { requirePerm } from "@/lib/access";
 import { ApiError, jsonError } from "@/lib/api-route";
@@ -32,8 +33,9 @@ export async function POST(
 ) {
   try {
     const { stage } = await ctx.params;
-    const u = await requirePerm(req, `process.${stage}`);
+    const u = await requirePerm(req, `process.${stage}.edit`);
     const body = processSchema.parse(await req.json());
+    assertEntryDate(u, body.date);
     let productId = body.product_id;
     let sourceProductId: number | undefined;
     if (stage === "extrusion") {

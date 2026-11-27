@@ -1,5 +1,6 @@
 "use client";
 
+import { useDateAllowed, useDateLimits } from "@/components/entry-window";
 import { Tabs } from "@/components/tabs";
 import { SkeletonRows } from "@/components/skeleton";
 import { useConfirm } from "@/components/confirm";
@@ -81,14 +82,15 @@ function LinesTable({
   const patch = (i: number, p: Partial<Line>) => setLines(lines.map((l, idx) => (idx === i ? { ...l, ...p } : l)));
   return (
     <div className="mt-3 overflow-x-auto rounded-lg border border-[#e5e5e5]">
-      <table className="erp-table m-0">
+      {/* On phones the cells are tighter, headers wrap and the status sits under the material, so nothing scrolls sideways. */}
+      <table className="erp-table m-0 max-sm:[&_td]:px-2 max-sm:[&_th]:px-2 max-sm:[&_th]:whitespace-normal">
         <thead>
           <tr>
             <th>Material</th>
-            <th className="w-28">{kgLabel}</th>
-            {times !== undefined && <th className="w-36 text-right">Consumed KG{times > 1 ? ` (×${times})` : ""}</th>}
-            <th className="w-28 text-right">In stock</th>
-            <th className="w-40 pl-6">Status</th>
+            <th className="sm:w-28">{kgLabel}</th>
+            {times !== undefined && <th className="text-right sm:w-36">Consumed KG{times > 1 ? ` (×${times})` : ""}</th>}
+            <th className="text-right sm:w-28">In stock</th>
+            <th className="hidden w-40 pl-6 sm:table-cell">Status</th>
             {!locked && <th className="w-10" />}
           </tr>
         </thead>
@@ -109,8 +111,11 @@ function LinesTable({
                       ))}
                     </select>
                   )}
+                  <div className="mt-0.5 text-[11px] font-semibold sm:hidden">
+                    {err ? <span className="text-red-700">{err}</span> : has ? <span className="text-emerald-700">✓ In stock</span> : null}
+                  </div>
                 </td>
-                <td className={locked ? "tabular-nums font-semibold text-[#404040]" : ""}>
+                <td className={locked ? "tabular-nums font-semibold text-[#404040]" : "min-w-[5.5rem]"}>
                   {locked ? (
                     kgText(Number(line.kg) || 0)
                   ) : (
@@ -128,7 +133,7 @@ function LinesTable({
                   <td className="text-right tabular-nums font-semibold text-[#171717]">{has && Number(line.kg) > 0 ? kgText(Number(line.kg) * times) : "—"}</td>
                 )}
                 <td className="text-right tabular-nums text-[#737373]">{m ? kgText(m.stock_kg) : "—"}</td>
-                <td className="pl-6 text-xs font-semibold">
+                <td className="hidden pl-6 text-xs font-semibold sm:table-cell">
                   {err ? <span className="text-red-700">{err}</span> : has ? <span className="text-emerald-700">✓ In stock</span> : <span className="text-[#a3a3a3]">—</span>}
                 </td>
                 {!locked && (
@@ -154,7 +159,10 @@ function LinesTable({
   );
 }
 
-export function MixingClient({ isAdmin = false, allowed = ["master", "final"] }: { isAdmin?: boolean; allowed?: ("master" | "final")[] }) {
+export function MixingClient({ allowed = ["master", "final"], perms = [] }: { allowed?: ("master" | "final")[]; perms?: string[] }) {
+  const limits = useDateLimits();
+  const dateOk = useDateAllowed();
+  const may = (t: "master" | "final", a: "edit" | "delete") => perms.includes(`mixing.${t}.${a}`);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [masters, setMasters] = useState<Batch[]>([]);
   const [ready, setReady] = useState(false);
@@ -379,6 +387,7 @@ export function MixingClient({ isAdmin = false, allowed = ["master", "final"] }:
 
       {tab === "master" && (
       <>
+      {may("master", "edit") ? (
       <div className="erp-panel mb-4">
         <h2 className="text-lg font-semibold">Master Batch</h2>
         <p className="erp-hint">Pick a formula and its materials fill in, or choose Manual. Each of the No. of Batch gets its own batch number.</p>
@@ -419,7 +428,7 @@ export function MixingClient({ isAdmin = false, allowed = ["master", "final"] }:
         </label>
         <label className="erp-label m-0 w-44">
           Mixing date
-          <input className="erp-input" type="date" value={masterDate} onChange={(e) => setMasterDate(e.target.value)} />
+          <input className="erp-input" type="date" {...limits} value={masterDate} onChange={(e) => setMasterDate(e.target.value)} />
         </label>
         </div>
         {ready && formulas.length === 0 && <p className="erp-hint">No master batch formula yet. Create one in Masters → Batch Master.</p>}
@@ -451,6 +460,9 @@ export function MixingClient({ isAdmin = false, allowed = ["master", "final"] }:
         <div className="erp-result">{masterResult}</div>
         </div>
       </div>
+      ) : (
+        <p className="erp-hint mb-4">You can view master batches only.</p>
+      )}
 
       <div className="erp-panel">
         <h2 className="text-lg font-semibold">Master Batches</h2>
@@ -495,7 +507,7 @@ export function MixingClient({ isAdmin = false, allowed = ["master", "final"] }:
                   <td>
                     <div className="flex items-center justify-end gap-1.5">
                       {newBatches.includes(b.batch_no) && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">New</span>}
-                      {isAdmin && Math.abs(b.available_kg - b.total_kg) < 0.0005 && (
+                      {may("master", "delete") && dateOk(b.date ?? "") && Math.abs(b.available_kg - b.total_kg) < 0.0005 && (
                         <>
                           <button type="button" aria-label={`Delete ${b.batch_no}`} title="Delete" onClick={() => removeMaster(b)} className="grid h-7 w-7 place-items-center rounded-md text-[#dc2626] hover:bg-[#fef2f2] max-lg:h-10 max-lg:w-10 max-lg:bg-[#fef2f2]">{TRASH}</button>
                         </>
@@ -512,7 +524,8 @@ export function MixingClient({ isAdmin = false, allowed = ["master", "final"] }:
       </>
       )}
 
-      {tab === "final" && (
+      {tab === "final" && !may("final", "edit") && <p className="erp-hint mb-4">You can view final batches only.</p>}
+      {tab === "final" && may("final", "edit") && (
       <div className="erp-panel">
         <h2 className="text-lg font-semibold">Final Batch</h2>
         <p className="erp-hint">The KG is taken from the chosen master group, oldest batch first. The final formula fills in the extra chemicals, or choose Manual.</p>
@@ -573,7 +586,7 @@ export function MixingClient({ isAdmin = false, allowed = ["master", "final"] }:
           </label>
           <label className="erp-label">
             Date
-            <input className="erp-input" type="date" value={finalDate} onChange={(e) => setFinalDate(e.target.value)} />
+            <input className="erp-input" type="date" {...limits} value={finalDate} onChange={(e) => setFinalDate(e.target.value)} />
           </label>
         </div>
         {selected && masterKgNum > 0 && (
@@ -696,7 +709,7 @@ export function MixingClient({ isAdmin = false, allowed = ["master", "final"] }:
                     <td>
                       <div className="flex items-center justify-end gap-1.5">
                         {fresh && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">New</span>}
-                        {isAdmin && Math.abs(b.available_kg - b.total_kg) < 0.0005 && (
+                        {may("final", "delete") && dateOk(b.date ?? "") && Math.abs(b.available_kg - b.total_kg) < 0.0005 && (
                           <button type="button" aria-label={`Delete ${b.batch_no}`} title="Delete" onClick={() => removeFinal(b)} className="grid h-7 w-7 place-items-center rounded-md text-[#dc2626] hover:bg-[#fef2f2] max-lg:h-10 max-lg:w-10 max-lg:bg-[#fef2f2]">{TRASH}</button>
                         )}
                         {Math.abs(b.available_kg - b.total_kg) >= 0.0005 && <span className="text-[11px] font-semibold text-[#a3a3a3]">{b.available_kg <= 0.0005 ? "Used up" : "In use"}</span>}

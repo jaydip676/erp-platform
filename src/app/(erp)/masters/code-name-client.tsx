@@ -9,11 +9,13 @@ type Row = { id: number; code: string; name: string };
 
 export function CodeNameClient({
   isAdmin,
+  canDelete = isAdmin,
   title,
   hint,
   endpoint,
 }: {
   isAdmin: boolean;
+  canDelete?: boolean;
   title: string;
   hint: string;
   endpoint: string;
@@ -113,8 +115,9 @@ export function CodeNameClient({
                 <td className="font-semibold">{row.code}</td>
                 <td>{row.name}</td>
                 <td>
-                  {isAdmin && (
+                  {(isAdmin || canDelete) && (
                     <div className="flex items-center gap-2">
+                      {isAdmin && (
                       <button
                         type="button"
                         className="erp-btn erp-btn-secondary mt-0"
@@ -128,6 +131,8 @@ export function CodeNameClient({
                       >
                         Edit
                       </button>
+                      )}
+                      {canDelete && (
                       <button
                         type="button"
                         aria-label={`Delete ${row.name}`}
@@ -143,6 +148,7 @@ export function CodeNameClient({
                           <path d="M14 11v6" />
                         </svg>
                       </button>
+                      )}
                     </div>
                   )}
                 </td>

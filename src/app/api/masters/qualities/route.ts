@@ -74,7 +74,7 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    await requirePerm(req, "masters.qualities.edit");
+    await requirePerm(req, "masters.qualities.delete");
     const id = z.number().int().parse(Number(new URL(req.url).searchParams.get("id")));
     const grade = await prisma.qualityGrade.findFirst({ where: { id, active: true } });
     if (!grade) throw new ApiError("Quality not found", 404);

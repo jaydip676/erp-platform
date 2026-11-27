@@ -62,7 +62,7 @@ function alterLabel(row: Pick<Row, "conv_unit" | "unit_qty" | "alt_qty" | "alt_u
 
 type Named = { id: number; code: string; name: string };
 
-export function InventoryClient({ isAdmin }: { isAdmin: boolean }) {
+export function InventoryClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boolean; canDelete?: boolean }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [ready, setReady] = useState(false);
   const [groupOptions, setGroupOptions] = useState<Named[]>([]);
@@ -312,8 +312,9 @@ export function InventoryClient({ isAdmin }: { isAdmin: boolean }) {
                 <td data-label="Alter Unit">{alterLabel(r)}</td>
                 <td className="erp-stack-full" data-label="Group">{r.group}</td>
                 <td className="erp-stack-full">
-                  {isAdmin && (
+                  {(isAdmin || canDelete) && (
                     <div className="flex items-center gap-2 max-lg:[&_.erp-btn]:flex-1">
+                    {isAdmin && (
                     <button
                       type="button"
                       className="erp-btn erp-btn-secondary mt-0"
@@ -340,6 +341,8 @@ export function InventoryClient({ isAdmin }: { isAdmin: boolean }) {
                     >
                       Edit
                     </button>
+                    )}
+                    {canDelete && (
                     <button
                       type="button"
                       aria-label={`Delete ${r.name}`}
@@ -355,6 +358,7 @@ export function InventoryClient({ isAdmin }: { isAdmin: boolean }) {
                         <path d="M14 11v6" />
                       </svg>
                     </button>
+                    )}
                     </div>
                   )}
                 </td>
