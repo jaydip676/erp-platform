@@ -1,26 +1,380 @@
 @import "tailwindcss";
 
+/* Neutral, shadcn-style theme: white surfaces, hairline borders, black primary. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --erp-bg: #f7f7f7;
+  --erp-ink: #0a0a0a;
+  --erp-brand: #0a0a0a;
+  --erp-accent: #737373;
+  --erp-primary: #171717;
+  --erp-panel: #ffffff;
+  --erp-muted: #737373;
+  --erp-border: #e5e5e5;
+  --erp-ring: #a3a3a3;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  font-family: var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  color: var(--erp-ink);
+  background: var(--erp-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* In the components layer so Tailwind classes on an element (text-right, mt-0, w-48 ...) can override these defaults. */
+@layer components {
+.erp-brand {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  color: var(--erp-brand);
+}
+
+.erp-brand span {
+  color: var(--erp-accent);
+  font-weight: 500;
+}
+
+.erp-input {
+  display: block;
+  width: 100%;
+  height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--erp-border);
+  border-radius: 8px;
+  background: #fff;
+  margin-top: 6px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--erp-ink);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+select.erp-input {
+  padding-right: 8px;
+}
+
+.erp-input::placeholder {
+  color: #a3a3a3;
+}
+
+.erp-input:focus,
+.erp-input:focus-visible {
+  outline: none;
+  border-color: var(--erp-ring);
+  box-shadow: 0 0 0 3px rgb(0 0 0 / 0.07);
+}
+
+.erp-input:disabled {
+  background: #f5f5f5;
+  color: #737373;
+}
+
+textarea.erp-input {
+  height: auto;
+  padding: 8px 12px;
+}
+
+.erp-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #404040;
+  margin: 12px 0 0;
+}
+
+.erp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 16px;
+  background: var(--erp-primary);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin: 8px 8px 0 0;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  transition: background-color 0.15s, opacity 0.15s;
+}
+
+.erp-btn:hover {
+  background: #262626;
+}
+
+.erp-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(0 0 0 / 0.15);
+}
+
+.erp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.erp-btn-secondary {
+  background: #fff;
+  color: #171717;
+  border-color: var(--erp-border);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.erp-btn-secondary:hover {
+  background: #f5f5f5;
+}
+
+.erp-metric,
+.erp-panel {
+  background: var(--erp-panel);
+  border: 1px solid var(--erp-border);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+.erp-metric small {
+  display: block;
+  color: #737373;
+  font-size: 13px;
+}
+
+.erp-metric b {
+  display: block;
+  font-size: 1.65rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 8px;
+  color: #0a0a0a;
+}
+
+.erp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.erp-table th,
+.erp-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #ececec;
+}
+
+.erp-table th {
+  color: #737373;
+  background: #fafafa;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.erp-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.erp-line {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.erp-result {
+  margin-top: 12px;
+  color: #15803d;
+  font-weight: 500;
+}
+
+.erp-hint {
+  color: var(--erp-muted);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+/* Compact form controls for dense entry screens (Mixing / Batch). */
+.erp-compact .erp-input {
+  height: 32px;
+  padding: 4px 10px;
+  font-size: 14px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.erp-compact .erp-label {
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.erp-compact .erp-btn {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.erp-compact .erp-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.erp-compact .erp-line {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.8fr) 32px;
+  gap: 8px;
+  max-width: 620px;
+  margin: 8px 0 0;
+  align-items: start;
+}
+
+.erp-compact .erp-line .erp-input {
+  margin-top: 0;
+}
+
+.erp-compact .erp-table td {
+  padding: 5px 8px;
+  vertical-align: middle;
+}
+
+.erp-compact .erp-table th {
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.erp-compact .erp-table .erp-input {
+  margin-top: 0;
+}
+}
+
+/*
+ * Phones and tablets (below 1024px). Desktop keeps the rules above unchanged.
+ * - 16px text in fields so iPhone does not zoom in when a field is tapped.
+ * - 44px tall fields and buttons: easy to hit with a thumb.
+ * - Tighter panels and tables so more fits on a narrow screen.
+ */
+@media (max-width: 1023.98px) {
+  @layer components {
+    .erp-input,
+    .erp-compact .erp-input {
+      height: 44px;
+      font-size: 16px;
+      border-radius: 10px;
+      padding: 8px 12px;
+    }
+    textarea.erp-input {
+      height: auto;
+    }
+    .erp-label,
+    .erp-compact .erp-label {
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .erp-btn,
+    .erp-compact .erp-btn {
+      height: 44px;
+      font-size: 15px;
+      border-radius: 10px;
+      padding: 0 18px;
+    }
+    .erp-metric,
+    .erp-panel {
+      padding: 14px;
+      border-radius: 12px;
+    }
+    .erp-hint {
+      margin-bottom: 10px;
+    }
+    .erp-table {
+      font-size: 13px;
+    }
+    .erp-table th,
+    .erp-table td {
+      padding: 9px 10px;
+    }
+    .erp-compact .erp-line {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 7.5rem) 40px;
+    }
+    /* Keep wide tables scrolling sideways inside their box instead of stretching the page. */
+    .erp-panel {
+      min-width: 0;
+    }
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  /* Smooth sideways scrolling for wide tables and tab rows. */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+}
+
+/* Primary action pinned to the bottom of the screen on phones (see .erp-sticky-bar). */
+@media (max-width: 1023.98px) {
+  .erp-sticky-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin: 12px -14px -14px;
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+    background: rgb(255 255 255 / 0.96);
+    border-top: 1px solid var(--erp-border);
+    backdrop-filter: blur(6px);
+    border-radius: 0 0 12px 12px;
+  }
+  .erp-sticky-bar .erp-btn {
+    width: 100%;
+    margin: 0;
+  }
+}
+
+/*
+ * .erp-stack: on phones a table turns into one card per row, each cell labelled from data-label.
+ * Cells with .erp-stack-full take the whole width; others sit two per line. Desktop shows the normal table.
+ */
+@media (max-width: 1023.98px) {
+  .erp-stack,
+  .erp-stack tbody {
+    display: block;
+    width: 100%;
+  }
+  .erp-stack thead {
+    display: none;
+  }
+  .erp-stack tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid #ececec;
+  }
+  .erp-stack tbody tr:hover {
+    background: transparent;
+  }
+  .erp-stack td {
+    display: block;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    text-align: left !important;
+  }
+  .erp-stack td:empty {
+    display: none;
+  }
+  .erp-stack td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #737373;
+  }
+  .erp-stack .erp-stack-full {
+    grid-column: 1 / -1;
+  }
 }

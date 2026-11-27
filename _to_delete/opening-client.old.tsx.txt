@@ -1,0 +1,159 @@
+"use client";
+
+import { useSubmit } from "@/lib/use-submit";
+import { useEffect, useState } from "react";
+import { api, ApiClientError } from "@/lib/client-api";
+import { Banner } from "@/components/banner";
+import { DataTable } from "@/components/data-table";
+import { showDate } from "@/lib/dates";
+
+type Material = { id: number; code: string; name: string };
+type Product = { id: number; size: string; valve_type: string };
+type Opening = { voucher_no: string; date: string; items: string; quantity: string; status: string };
+type StoreItem = { id: number; name: string; group: string; unit: string };
+
+const DEPARTMENTS = [
+  ["RAW", "Raw Material Store", "KG"],
+  ["EXTRUSION", "Green Tube", "PCS"],
+  ["CURED", "Cured Tube (Press)", "PCS"],
+  ["QC", "Quality Approved (Unpacked)", "PCS"],
+  ["FG", "Finished Goods", "PCS"],
+  ["STORE", "Packing Store", "PCS"],
+] as const;
+
+export function OpeningClient({ isAdmin }: { isAdmin: boolean }) {
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [storeItems, setStoreItems] = useState<StoreItem[]>([]);
+  const [kind, setKind] = useState<"RAW" | "PRODUCT" | "STORE">("RAW");
+  const [itemId, setItemId] = useState<number | "">("");
+  const [dept, setDept] = useState("RAW");
+  const [qty, setQty] = useState("");
+  const [date, setDate] = useState("2026-11-01");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [openings, setOpenings] = useState<Opening[]>([]);
+  const loadOpenings = () => api<Opening[]>("/api/vouchers?type=OPENING&limit=500").then(setOpenings).catch(() => setOpenings([]));
+
+  useEffect(() => {
+    loadOpenings();
+    api<Material[]>("/api/materials").then(setMaterials).catch(() => undefined);
+    api<Product[]>("/api/products").then(setProducts).catch(() => undefined);
+    api<StoreItem[]>("/api/masters/inventory").then((rows) => setStoreItems((Array.isArray(rows) ? rows : []).filter((row) => row.group === "Store Item" || row.group === "Pouch Item"))).catch(() => undefined);
+  }, []);
+
+  const options = kind === "RAW" ? materials : kind === "STORE" ? storeItems : products;
+  const selectedStore = storeItems.find((item) => item.id === Number(itemId));
+  const unit = kind === "STORE" ? selectedStore?.unit || "PCS" : DEPARTMENTS.find((d) => d[0] === dept)?.[2] ?? (kind === "RAW" ? "KG" : "PCS");
+
+  const [postOnce, postBusy] = useSubmit(post);
+  async function post() {
+    try {
+      const d = await api<{ voucher_no: string }>("/api/opening-stock", {
+        method: "POST",
+        body: JSON.stringify({
+          item_type: kind,
+          item_id: Number(itemId),
+          department_code: dept,
+          quantity: Number(qty),
+          unit,
+          date,
+        }),
+      });
+      setMsg({ ok: true, text: `${d.voucher_no} posted.` });
+      setQty("");
+      loadOpenings();
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Could not post. Try again." });
+    }
+  }
+
+  const selectedName =
+    kind === "RAW" ? materials.find((m) => m.id === Number(itemId))?.name
+    : kind === "STORE" ? storeItems.find((m) => m.id === Number(itemId))?.name
+    : (() => { const p = products.find((x) => x.id === Number(itemId)); return p ? (p.valve_type ? `${p.size} / ${p.valve_type}` : p.size) : undefined; })();
+  const alreadyOpened = selectedName ? openings.filter((o) => o.status !== "VOID" && o.items.split(", ").includes(selectedName)) : [];
+
+  if (!isAdmin) return <div className="erp-panel">Opening stock can be posted by an admin only.</div>;
+
+  return (
+    <div className="space-y-4">
+    <div className="erp-panel">
+      <h2 className="mb-1 text-lg font-semibold">Post opening stock</h2>
+      <p className="erp-hint">
+        Raw material opens in the store as KG. Packing items such as pouch, nut, washer, cap, valve pin, and bags open in the packing store. Tube WIP opens in the department that currently holds those pieces.
+      </p>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <label className="erp-label">
+          Kind
+          <select
+            className="erp-input"
+            value={kind}
+            onChange={(e) => {
+              const next = e.target.value as "RAW" | "PRODUCT" | "STORE";
+              setKind(next);
+              setDept(next === "RAW" ? "RAW" : next === "STORE" ? "STORE" : "FG");
+              setItemId("");
+            }}
+          >
+            <option value="RAW">Raw material</option>
+            <option value="STORE">Packing store item</option>
+            <option value="PRODUCT">Tube (size / valve)</option>
+          </select>
+        </label>
+        <label className="erp-label">
+          Item
+          <select className="erp-input" value={itemId} onChange={(e) => setItemId(Number(e.target.value))}>
+            <option value="">Select</option>
+            {kind === "RAW" && materials.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+            {kind === "STORE" && storeItems.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+            {kind === "PRODUCT" && products.map((p) => (
+              <option key={p.id} value={p.id}>{p.size} / {p.valve_type}</option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-label">
+          Department
+          <select className="erp-input" value={dept} onChange={(e) => setDept(e.target.value)}>
+            {DEPARTMENTS.filter((d) => (kind === "RAW" ? d[0] === "RAW" : kind === "STORE" ? d[0] === "STORE" : d[0] !== "RAW" && d[0] !== "STORE")).map((d) => (
+              <option key={d[0]} value={d[0]}>
+                {d[1]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="erp-label">
+          Quantity ({unit})
+          <input className="erp-input" type="number" step="0.001" value={qty} onChange={(e) => setQty(e.target.value)} />
+        </label>
+        <label className="erp-label">
+          Opening date
+          <input className="erp-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+      </div>
+      <button type="button" className="erp-btn" disabled={!itemId || !options.length || postBusy} onClick={postOnce}>
+        Post opening
+      </button>
+      {alreadyOpened.length > 0 && (
+        <Banner ok={false} warn>
+          {selectedName} already has an opening entry ({alreadyOpened.map((o) => o.voucher_no).join(", ")}). Posting again adds to it.
+        </Banner>
+      )}
+      {msg && <Banner ok={msg.ok} onClose={() => setMsg(null)}>{msg.text}</Banner>}
+    </div>
+
+    <div className="erp-panel">
+      <h2 className="mb-1 text-lg font-semibold">Opening entries posted</h2>
+      <p className="erp-hint">Check here before posting so nothing is entered twice.</p>
+      <DataTable
+        head={["Voucher", "Date", "Item", "Quantity", "Status"]}
+        empty="No opening stock posted yet."
+        rows={openings.map((o) => [o.voucher_no, showDate(o.date), o.items, o.quantity, o.status === "VOID" ? "Deleted" : "Posted"])}
+      />
+    </div>
+    </div>
+  );
+}

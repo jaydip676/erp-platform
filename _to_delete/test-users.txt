@@ -1,0 +1,5 @@
+Test users created by Claude on 25-11-2026 for checking permissions (localhost only).
+test_production  password: 273d442ea9bf   (Production Step 1 + Step 2)
+test_store       password: fbc622e8bde4   (Inward Material Raw tab, Department Stock tab, Item Master view)
+test_viewer      password: eed4716809a2   (Dashboard, Daily Report, Vouchers, Opening Stock view)
+test_store new password after reset test: 60d720794c2f

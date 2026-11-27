@@ -1,0 +1,27 @@
+import { NextResponse } from "next/server";
+import { requireUser, ForbiddenError } from "@/lib/auth";
+import { jsonError } from "@/lib/api-route";
+import { prisma } from "@/lib/prisma";
+
+// One-off: remove batches and production vouchers. Inward receipts, Masters and Opening Stock stay.
+const TYPES = ["MASTER_BATCH", "FINAL_BATCH", "EXTRUSION", "CURING", "INSPECTION", "PACKING"];
+
+export async function POST(req: Request) {
+  try {
+    const user = await requireUser(req);
+    if (user.role !== "admin") throw new ForbiddenError("Admin permission required");
+    const result = await prisma.$transaction(async (tx) => {
+      const vs = await tx.voucher.findMany({ where: { voucherType: { in: TYPES } }, select: { id: true } });
+      const ids = vs.map((v) => v.id);
+      const rej = await tx.rejection.deleteMany({ where: { voucherId: { in: ids } } });
+      const led = await tx.stockLedger.deleteMany({ where: { voucherId: { in: ids } } });
+      await tx.batch.updateMany({ data: { parentBatchId: null } });
+      const vou = await tx.voucher.deleteMany({ where: { id: { in: ids } } });
+      const bat = await tx.batch.deleteMany({});
+      return { vouchers: vou.count, ledger: led.count, rejections: rej.count, batches: bat.count };
+    }, { timeout: 60000 });
+    return NextResponse.json(result);
+  } catch (e) {
+    return jsonError(e);
+  }
+}

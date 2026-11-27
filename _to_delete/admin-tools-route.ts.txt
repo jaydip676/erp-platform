@@ -1,0 +1,95 @@
+// TEMPORARY: backup / wipe / restore helper for moving to the new database. Admin only. Deleted afterwards.
+import { NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
+import { requireAdmin } from "@/lib/access";
+import { ApiError, jsonError } from "@/lib/api-route";
+import { prisma } from "@/lib/prisma";
+
+const DIR = path.join(process.cwd(), "backups");
+// Masters and users: parents before children, so a restore never breaks a link.
+const KEEP = [
+  "users", "departments", "machines", "product_types", "size_master", "size_valves", "item_groups", "quality_grades",
+  "inventory_items", "raw_materials", "recipes", "recipe_items", "catalog_items", "packing_consumptions", "app_settings", "clients",
+];
+// Everything posted while working: stock, vouchers, batches, rejections, logs, and the tube rows made for them.
+const WIPE = ["stock_ledger", "rejection_register", "vouchers", "batches", "products", "audit_logs"];
+
+type Row = Record<string, unknown>;
+const q = (t: string) => `"${t.replace(/[^a-z_]/g, "")}"`;
+const json = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? x.toString() : x));
+
+async function existing() {
+  const rows = await prisma.$queryRawUnsafe<{ table_name: string }[]>(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`);
+  return new Set(rows.map((r) => r.table_name));
+}
+async function count(t: string) {
+  const r = await prisma.$queryRawUnsafe<{ n: bigint }[]>(`SELECT count(*) AS n FROM ${q(t)}`);
+  return Number(r[0].n);
+}
+const fileOf = (name: string) => path.join(DIR, `${name.replace(/[^A-Za-z0-9_.-]/g, "")}.json`);
+
+export async function POST(req: Request) {
+  try {
+    const b = (await req.json()) as { action: string; name?: string; scope?: "all" | "masters"; confirm?: string; truncate?: boolean };
+    const have = await existing();
+    // A brand-new database has no users to sign in with, so a first restore is allowed only while users is empty.
+    const bootstrap = b.action === "restore" && !b.truncate && have.has("users") && (await count("users")) === 0;
+    if (!bootstrap) await requireAdmin(req);
+
+    if (b.action === "counts") {
+      const out: Record<string, number> = {};
+      for (const t of [...have].filter((t) => !t.startsWith("_")).sort()) out[t] = await count(t);
+      return NextResponse.json(out);
+    }
+
+    if (b.action === "backup") {
+      if (!b.name) throw new ApiError("Give the backup a name.");
+      const names = b.scope === "masters" ? KEEP.filter((t) => have.has(t)) : [...have].filter((t) => !t.startsWith("_")).sort();
+      const tables: Record<string, Row[]> = {};
+      for (const t of names) tables[t] = await prisma.$queryRawUnsafe<Row[]>(`SELECT * FROM ${q(t)} ORDER BY 1`);
+      await fs.mkdir(DIR, { recursive: true });
+      await fs.writeFile(fileOf(b.name), json({ created: new Date().toISOString(), scope: b.scope ?? "all", tables }), "utf8");
+      return NextResponse.json({ file: `backups/${b.name}.json`, rows: Object.fromEntries(names.map((t) => [t, tables[t].length])) });
+    }
+
+    if (b.action === "wipe") {
+      if (b.confirm !== "WIPE") throw new ApiError("Not confirmed.");
+      // Only after a full backup exists on disk.
+      const f = JSON.parse(await fs.readFile(fileOf(b.name ?? ""), "utf8").catch(() => { throw new ApiError("Make a full backup first."); }));
+      if (f.scope !== "all") throw new ApiError("The backup named must be a full backup.");
+      const list = WIPE.filter((t) => have.has(t));
+      await prisma.$executeRawUnsafe(`TRUNCATE ${list.map(q).join(", ")} RESTART IDENTITY`);
+      return NextResponse.json({ wiped: list });
+    }
+
+    if (b.action === "restore") {
+      const f = JSON.parse(await fs.readFile(fileOf(b.name ?? ""), "utf8").catch(() => { throw new ApiError("Backup file not found."); })) as { tables: Record<string, Row[]> };
+      const names = KEEP.filter((t) => have.has(t) && f.tables[t]);
+      const missing = KEEP.filter((t) => f.tables[t] && !have.has(t));
+      if (missing.length) throw new ApiError(`These tables are missing in this database. Run db:push first: ${missing.join(", ")}`);
+      if (!b.truncate) {
+        for (const t of names) if ((await count(t)) > 0 && t !== "departments") throw new ApiError(`${t} already has rows. This restore is for an empty database.`);
+      }
+      const done: Record<string, number> = {};
+      await prisma.$transaction(
+        async (tx) => {
+          if (b.truncate) await tx.$executeRawUnsafe(`TRUNCATE ${[...names].reverse().map(q).join(", ")} RESTART IDENTITY CASCADE`);
+          else await tx.$executeRawUnsafe(`DELETE FROM "departments"`);
+          for (const t of names) {
+            const rows = f.tables[t];
+            if (rows.length) await tx.$executeRawUnsafe(`INSERT INTO ${q(t)} SELECT * FROM json_populate_recordset(null::${q(t)}, $1::json)`, json(rows));
+            const hasId = await tx.$queryRawUnsafe<{ s: string | null }[]>(`SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = '${t}' AND column_name = 'id') THEN pg_get_serial_sequence('${q(t)}', 'id') END AS s`);
+            if (hasId[0]?.s) await tx.$executeRawUnsafe(`SELECT setval('${hasId[0].s}', COALESCE((SELECT MAX(id) FROM ${q(t)}), 1), (SELECT MAX(id) FROM ${q(t)}) IS NOT NULL)`);
+            done[t] = rows.length;
+          }
+        },
+        { timeout: 120000, maxWait: 20000 },
+      );
+      return NextResponse.json({ restored: done });
+    }
+    throw new ApiError("Unknown action.");
+  } catch (e) {
+    return jsonError(e);
+  }
+}

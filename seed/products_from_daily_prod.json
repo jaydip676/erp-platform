@@ -1,0 +1,146 @@
+[
+  {
+    "size": "1000*20",
+    "valve_type": "TR 78A",
+    "unit_weight_kg": 3.3,
+    "segment": null
+  },
+  {
+    "size": "12.4*28",
+    "valve_type": "TR 218",
+    "unit_weight_kg": 4.4,
+    "segment": null
+  },
+  {
+    "size": "1200*24",
+    "valve_type": "TR 1175",
+    "unit_weight_kg": 7.7,
+    "segment": null
+  },
+  {
+    "size": "1200*24",
+    "valve_type": "TRJ1175C",
+    "unit_weight_kg": 10.0,
+    "segment": null
+  },
+  {
+    "size": "16.9*28",
+    "valve_type": "TR 218",
+    "unit_weight_kg": 7.0,
+    "segment": null
+  },
+  {
+    "size": "16.9*28",
+    "valve_type": "TR 218A",
+    "unit_weight_kg": 7.0,
+    "segment": null
+  },
+  {
+    "size": "3.00*17",
+    "valve_type": "TR 29",
+    "unit_weight_kg": 0.44,
+    "segment": null
+  },
+  {
+    "size": "3.00*18",
+    "valve_type": "TR 29",
+    "unit_weight_kg": 0.46,
+    "segment": null
+  },
+  {
+    "size": "3.50*10",
+    "valve_type": "V8 01",
+    "unit_weight_kg": 0.37,
+    "segment": null
+  },
+  {
+    "size": "3.50*8",
+    "valve_type": "V8 03",
+    "unit_weight_kg": 0.34,
+    "segment": null
+  },
+  {
+    "size": "3.75*12",
+    "valve_type": "V8 01",
+    "unit_weight_kg": 0.47,
+    "segment": null
+  },
+  {
+    "size": "4.00*10",
+    "valve_type": "TR 13 SV",
+    "unit_weight_kg": 0.44,
+    "segment": null
+  },
+  {
+    "size": "4.00*8",
+    "valve_type": "V8 03",
+    "unit_weight_kg": 0.365,
+    "segment": null
+  },
+  {
+    "size": "4.50*10",
+    "valve_type": "TR 13 SV",
+    "unit_weight_kg": 0.58,
+    "segment": null
+  },
+  {
+    "size": "6.00*16",
+    "valve_type": "TR 15",
+    "unit_weight_kg": 1.18,
+    "segment": null
+  },
+  {
+    "size": "7.00*15",
+    "valve_type": "TR 13 LV",
+    "unit_weight_kg": 1.35,
+    "segment": null
+  },
+  {
+    "size": "7.50*16",
+    "valve_type": "TR 177",
+    "unit_weight_kg": 1.45,
+    "segment": null
+  },
+  {
+    "size": "9.00*20",
+    "valve_type": "TR 177",
+    "unit_weight_kg": 2.8,
+    "segment": null
+  },
+  {
+    "size": "90.90*12",
+    "valve_type": "V8 01",
+    "unit_weight_kg": 0.375,
+    "segment": null
+  },
+  {
+    "size": "CYCLE",
+    "valve_type": "TR 48",
+    "unit_weight_kg": 0.3,
+    "segment": null
+  },
+  {
+    "size": "R-12",
+    "valve_type": "TR 13 SV",
+    "unit_weight_kg": 0.67,
+    "segment": null
+  },
+  {
+    "size": "R-13",
+    "valve_type": "TR 13 LV",
+    "unit_weight_kg": 0.76,
+    "segment": null
+  },
+  {
+    "size": "R-14",
+    "valve_type": "TR 13 LV",
+    "unit_weight_kg": 0.97,
+    "segment": null
+  },
+  {
+    "size": "R-15",
+    "valve_type": "TR 13 LV",
+    "unit_weight_kg": 1.075,
+    "segment": null
+  }
+]

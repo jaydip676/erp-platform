@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: DATABASE_URL is the pooled connection the app uses; DIRECT_URL is the direct one for db push.
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  username     String     @unique @db.VarChar(80)
+  passwordHash String     @map("password_hash") @db.VarChar(255)
+  role         String     @default("operator") @db.VarChar(30)
+  active       Boolean    @default(true)
+  /// Full name shown in the app. Optional.
+  displayName  String?    @map("display_name") @db.VarChar(120)
+  /// Permission keys (see src/lib/permissions.ts). Admins have every permission.
+  permissions  Json       @default("[]")
+  /// Deleted users stay for history (their vouchers) but can never log in or be listed.
+  deleted      Boolean    @default(false)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  lastLoginAt  DateTime?  @map("last_login_at")
+  vouchers     Voucher[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Product {
+  id           Int          @id @default(autoincrement())
+  size         String       @db.VarChar(50)
+  valveType    String       @map("valve_type") @db.VarChar(50)
+  /// Packed finished goods are kept by size, valve and brand. Every other step has no brand (empty).
+  brand        String       @default("") @db.VarChar(80)
+  unitWeightKg Decimal?     @map("unit_weight_kg") @db.Decimal(12, 4)
+  segment      String?      @db.VarChar(50)
+  active       Boolean      @default(true)
+  vouchers     Voucher[]
+  rejections   Rejection[]
+
+  @@unique([size, valveType, brand])
+  @@map("products")
+}
+
+model CatalogItem {
+  id           Int     @id @default(autoincrement())
+  kind         String  @db.VarChar(30)
+  category     String  @db.VarChar(80)
+  srNo         Int     @map("sr_no")
+  size         String  @db.VarChar(160)
+  valve        String  @default("") @db.VarChar(40)
+  bagItem      String  @default("") @map("bag_item") @db.VarChar(160)
+  packing      String  @default("") @db.VarChar(80)
+  bagPcs       Int?    @map("bag_pcs")
+  bags         Int?
+  domesticQty  Int     @default(0) @map("domestic_qty")
+  exportQty    Int     @default(0) @map("export_qty")
+  weightKg     Float   @default(0) @map("weight_kg")
+  /// Extrusion weight percentage (ExKg). Shared by the product list and later extrusion use.
+  exKg         Float   @default(0) @map("ex_kg")
+  active       Boolean @default(true)
+
+  @@unique([kind, category, srNo])
+  @@map("catalog_items")
+}
+
+model ProductType {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique @db.VarChar(80)
+  active Boolean @default(true)
+
+  @@map("product_types")
+}
+
+model SizeMaster {
+  id       Int         @id @default(autoincrement())
+  size     String      @unique @db.VarChar(160)
+  active   Boolean     @default(true)
+  valves   SizeValve[]
+
+  @@map("size_master")
+}
+
+model SizeValve {
+  id     Int        @id @default(autoincrement())
+  sizeId Int        @map("size_id")
+  valve  String     @db.VarChar(40)
+  size   SizeMaster @relation(fields: [sizeId], references: [id], onDelete: Cascade)
+
+  @@unique([sizeId, valve])
+  @@map("size_valves")
+}
+
+model InventoryItem {
+  id      Int     @id @default(autoincrement())
+  code    String  @unique @db.VarChar(30)
+  name    String  @db.VarChar(160)
+  unit    String  @db.VarChar(10)
+  /// Quantity of the main unit in the alter-unit equation, e.g. 1 BAG = 100 NOS.
+  unitQty Float   @default(1) @map("unit_qty")
+  /// Unit on the left of the alter-unit equation, e.g. BAG in 1 BAG = 100 PCS. Separate from the main unit.
+  convUnit String @default("BAG") @map("conv_unit") @db.VarChar(10)
+  altQty  Float?  @map("alt_qty")
+  altUnit String  @default("") @map("alt_unit") @db.VarChar(10)
+  marking String  @default("") @db.VarChar(20)
+  itemSize String @default("") @map("item_size") @db.VarChar(40)
+  quality String  @default("") @db.VarChar(40)
+  consQty Float   @default(0) @map("cons_qty")
+  mfgUse  String  @default("") @map("mfg_use") @db.VarChar(20)
+  group   String  @db.VarChar(80)
+  packings PackingConsumption[]
+  active  Boolean @default(true)
+
+  @@unique([group, name])
+  @@map("inventory_items")
+}
+
+model RawMaterial {
+  id        Int          @id @default(autoincrement())
+  code      String       @unique @db.VarChar(30)
+  name      String       @db.VarChar(120)
+  unit      String       @default("KG") @db.VarChar(10)
+  minStock  Decimal      @default(0) @map("min_stock") @db.Decimal(14, 3)
+  active    Boolean      @default(true)
+  recipeItems RecipeItem[]
+
+  @@map("raw_materials")
+}
+
+model Department {
+  id             Int            @id @default(autoincrement())
+  code           String         @unique @db.VarChar(20)
+  name           String         @unique @db.VarChar(80)
+  machines       Machine[]
+  vouchers       Voucher[]
+  stockLedgers   StockLedger[]
+  rejections     Rejection[]
+
+  @@map("departments")
+}
+
+model Machine {
+  id           Int        @id @default(autoincrement())
+  code         String     @unique @db.VarChar(30)
+  name         String     @db.VarChar(100)
+  departmentId Int?       @map("department_id")
+  department   Department? @relation(fields: [departmentId], references: [id])
+  vouchers     Voucher[]
+
+  @@map("machines")
+}
+
+model Recipe {
+  id        Int          @id @default(autoincrement())
+  code      String       @unique @db.VarChar(30)
+  name      String?      @db.VarChar(100)
+  batchType String       @default("MASTER") @map("batch_type") @db.VarChar(20)
+  /// Final batch formulas only: KG of master batch used in each final batch.
+  masterKg  Float        @default(60) @map("master_kg")
+  active    Boolean      @default(true)
+  items     RecipeItem[]
+
+  @@map("recipes")
+}
+
+model RecipeItem {
+  id          Int         @id @default(autoincrement())
+  recipeId    Int         @map("recipe_id")
+  materialId  Int         @map("material_id")
+  kgPerBatch  Decimal     @map("kg_per_batch") @db.Decimal(14, 3)
+  marking     String      @default("") @db.VarChar(20)
+  itemSize    String      @default("") @map("item_size") @db.VarChar(40)
+  quality     String      @default("") @db.VarChar(40)
+  mfgUse      String      @default("") @map("mfg_use") @db.VarChar(20)
+  recipe      Recipe      @relation(fields: [recipeId], references: [id])
+  material    RawMaterial @relation(fields: [materialId], references: [id])
+
+  @@map("recipe_items")
+}
+
+model Batch {
+  id             Int       @id @default(autoincrement())
+  batchNo        String    @unique @map("batch_no") @db.VarChar(40)
+  batchType      String    @map("batch_type") @db.VarChar(20)
+  parentBatchId  Int?      @map("parent_batch_id")
+  parentBatch    Batch?    @relation("BatchHierarchy", fields: [parentBatchId], references: [id])
+  childBatches   Batch[]   @relation("BatchHierarchy")
+  totalKg        Decimal   @default(0) @map("total_kg") @db.Decimal(14, 3)
+  availableKg    Decimal   @default(0) @map("available_kg") @db.Decimal(14, 3)
+  status         String    @default("DRAFT") @db.VarChar(20)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  vouchers       Voucher[]
+
+  @@map("batches")
+}
+
+/// A customer that dispatches go to.
+model Client {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(120)
+  phone     String    @default("") @db.VarChar(40)
+  city      String    @default("") @db.VarChar(80)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  vouchers  Voucher[]
+
+  @@map("clients")
+}
+
+model Voucher {
+  id           Int       @id @default(autoincrement())
+  voucherNo    String    @unique @map("voucher_no") @db.VarChar(40)
+  voucherType  String    @map("voucher_type") @db.VarChar(30)
+  voucherDate  DateTime  @map("voucher_date") @db.Date
+  departmentId Int?      @map("department_id")
+  batchId      Int?      @map("batch_id")
+  productId    Int?      @map("product_id")
+  machineId    Int?      @map("machine_id")
+  clientId     Int?      @map("client_id")
+  inputQty     Decimal   @default(0) @map("input_qty") @db.Decimal(14, 3)
+  outputQty    Decimal   @default(0) @map("output_qty") @db.Decimal(14, 3)
+  consumedKg   Decimal   @default(0) @map("consumed_kg") @db.Decimal(14, 3)
+  revertKg     Decimal   @default(0) @map("revert_kg") @db.Decimal(14, 3)
+  repairQty    Int       @default(0) @map("repair_qty")
+  secondQty    Int       @default(0) @map("second_qty")
+  scrapQty     Int       @default(0) @map("scrap_qty")
+  notes        String?   @db.Text
+  status       String    @default("POSTED") @db.VarChar(20)
+  createdBy    Int?      @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  department   Department? @relation(fields: [departmentId], references: [id])
+  batch        Batch?    @relation(fields: [batchId], references: [id])
+  product      Product?  @relation(fields: [productId], references: [id])
+  machine      Machine?  @relation(fields: [machineId], references: [id])
+  creator      User?     @relation(fields: [createdBy], references: [id])
+  client       Client?   @relation(fields: [clientId], references: [id])
+  stockLedgers StockLedger[]
+  rejections   Rejection[]
+
+  @@map("vouchers")
+}
+
+model StockLedger {
+  id           Int        @id @default(autoincrement())
+  voucherId    Int        @map("voucher_id")
+  itemType     String     @map("item_type") @db.VarChar(30)
+  itemId       Int        @map("item_id")
+  departmentId Int        @map("department_id")
+  qtyIn        Decimal    @default(0) @map("qty_in") @db.Decimal(14, 3)
+  qtyOut       Decimal    @default(0) @map("qty_out") @db.Decimal(14, 3)
+  unit         String     @db.VarChar(10)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  voucher      Voucher    @relation(fields: [voucherId], references: [id])
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  @@map("stock_ledger")
+}
+
+model Rejection {
+  id             Int        @id @default(autoincrement())
+  voucherId      Int        @map("voucher_id")
+  departmentId   Int        @map("department_id")
+  productId      Int?       @map("product_id")
+  rejectionType  String     @map("rejection_type") @db.VarChar(20)
+  quantity       Int
+  reason         String?    @db.Text
+  rejectionDate  DateTime   @map("rejection_date") @db.Date
+  voucher        Voucher    @relation(fields: [voucherId], references: [id])
+  department     Department @relation(fields: [departmentId], references: [id])
+  product        Product?   @relation(fields: [productId], references: [id])
+
+  @@map("rejection_register")
+}
+
+model ItemGroup {
+  id     Int     @id @default(autoincrement())
+  code   String  @unique @db.VarChar(30)
+  name   String  @unique @db.VarChar(80)
+  active Boolean @default(true)
+
+  @@map("item_groups")
+}
+
+model QualityGrade {
+  id        Int                   @id @default(autoincrement())
+  code      String                @unique @db.VarChar(30)
+  name      String                @unique @db.VarChar(80)
+  active    Boolean               @default(true)
+  packings  PackingConsumption[]
+
+  @@map("quality_grades")
+}
+
+model PackingConsumption {
+  id             Int            @id @default(autoincrement())
+  /// Empty means every brand. A grade means only that brand's bag.
+  qualityGradeId Int?           @map("quality_grade_id")
+  size           String         @db.VarChar(160)
+  itemId         Int            @map("item_id")
+  /// Qty used per domestic finished piece. 0 means nothing is deducted.
+  consQty        Float          @map("cons_qty")
+  /// Qty used per export finished piece. 0 means nothing is deducted.
+  exportQty      Float          @default(0) @map("export_qty")
+  active         Boolean        @default(true)
+  qualityGrade   QualityGrade?  @relation(fields: [qualityGradeId], references: [id])
+  item           InventoryItem  @relation(fields: [itemId], references: [id])
+
+  @@map("packing_consumptions")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  action    String?  @db.VarChar(30)
+  entity    String?  @db.VarChar(80)
+  entityId  Int?     @map("entity_id")
+  detail    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+/// Plant-wide switches, such as whether Step 4 deducts packing items automatically.
+model AppSetting {
+  key       String   @id @db.VarChar(80)
+  value     String   @db.Text
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by") @db.VarChar(80)
+
+  @@map("app_settings")
+}

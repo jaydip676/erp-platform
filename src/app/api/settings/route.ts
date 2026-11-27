@@ -1,0 +1,51 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { requireUser } from "@/lib/auth";
+import { ApiError, jsonError } from "@/lib/api-route";
+import { requireAdmin, requirePerm } from "@/lib/access";
+import { SETTINGS, getSetting, setSetting, type SettingKey } from "@/lib/erp/settings";
+
+async function all() {
+  const out: Record<string, { value: boolean; updated_at: string | null; updated_by: string | null }> = {};
+  for (const key of Object.keys(SETTINGS) as SettingKey[]) {
+    const s = await getSetting(key);
+    out[key] = { value: s.value, updated_at: s.updatedAt, updated_by: s.updatedBy };
+  }
+  return out;
+}
+
+/** GET: every plant switch. Anyone signed in may read them (Step 4 shows them). */
+export async function GET(req: Request) {
+  try {
+    await requireUser(req);
+    const s = await all();
+    // packing_auto_deduction at the top level too, for older screens.
+    return NextResponse.json({ ...s, packing_auto_deduction: s.packing_auto_deduction.value, updated_by: s.packing_auto_deduction.updated_by });
+  } catch (e) {
+    return jsonError(e);
+  }
+}
+
+/**
+ * PATCH { key, value }. Auto deduction needs "Auto Consumption Packing · edit";
+ * allowing negative pouch stock is for admins only.
+ */
+export async function PATCH(req: Request) {
+  try {
+    const raw = await req.json();
+    // Older screens send { packing_auto_deduction: true|false }.
+    const body =
+      typeof raw?.packing_auto_deduction === "boolean"
+        ? { key: "packing_auto_deduction" as const, value: raw.packing_auto_deduction as boolean }
+        : z.object({ key: z.enum(["packing_auto_deduction", "pouch_allow_negative"]), value: z.boolean() }).parse(raw);
+    const user = body.key === "pouch_allow_negative" ? await requireAdmin(req) : await requirePerm(req, "masters.packing.edit");
+    try {
+      await setSetting(body.key, body.value, user.username);
+    } catch {
+      throw new ApiError("The settings table does not exist yet. Run npm run db:push, restart the app, and try again.");
+    }
+    return NextResponse.json(await all());
+  } catch (e) {
+    return jsonError(e);
+  }
+}
