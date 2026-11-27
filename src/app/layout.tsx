@@ -10,14 +10,14 @@ export const metadata: Metadata = {
   description: "Production & Inventory Management",
   applicationName: "Demo ERP",
   icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Demo ERP", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Demo ERP", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#000000",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

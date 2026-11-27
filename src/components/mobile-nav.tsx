@@ -44,7 +44,7 @@ export function MobileNav({
 
   return (
     <>
-      <div className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-[#e5e5e5] bg-white/95 px-2 backdrop-blur lg:hidden">
+      <div className="sticky top-0 z-40 flex h-14 box-content items-center gap-2 border-b border-[#e5e5e5] bg-white/95 px-2 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
         <button
           type="button"
           aria-label="Open menu"
@@ -68,7 +68,7 @@ export function MobileNav({
           role="dialog"
           aria-modal="true"
           aria-label="Menu"
-          className={`absolute inset-y-0 left-0 flex w-[min(300px,86vw)] flex-col bg-[#f7f7f7] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-2xl transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"}`}
+          className={`absolute inset-y-0 left-0 flex w-[min(300px,86vw)] flex-col bg-[#f7f7f7] px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))] shadow-2xl transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="flex items-center gap-2.5 px-2 py-1.5">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">D</span>

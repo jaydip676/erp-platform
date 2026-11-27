@@ -92,7 +92,7 @@ export function DashboardSkeleton() {
 export function ShellSkeleton({ children }: { children?: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
-      <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[#e5e5e5] bg-white px-4 lg:hidden">
+      <div className="sticky top-0 z-30 flex h-14 box-content items-center gap-3 border-b border-[#e5e5e5] bg-white px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <Skeleton className="h-8 w-8" />
         <Skeleton className="h-5 w-32" />
         <Skeleton className="ml-auto h-8 w-8 rounded-full" />

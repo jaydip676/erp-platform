@@ -30,7 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-[#f7f7f7]">
+    <div className="grid min-h-dvh place-items-center bg-[#f7f7f7] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <form onSubmit={login} className="w-[min(92vw,390px)] rounded-2xl border border-[#e5e5e5] bg-white p-8 shadow-sm">
         <div className="erp-brand">
           DEMO <span>ERP</span>
