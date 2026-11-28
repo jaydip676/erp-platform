@@ -1,5 +1,6 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
 import { Select } from "@/components/select";
 import { DateInput } from "@/components/date-input";
 import { Busy } from "@/components/spinner";
@@ -513,7 +514,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
                       {newBatches.includes(b.batch_no) && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">New</span>}
                       {may("master", "delete") && dateOk(b.date ?? "") && Math.abs(b.available_kg - b.total_kg) < 0.0005 && (
                         <>
-                          <button type="button" aria-label={`Delete ${b.batch_no}`} title="Delete" onClick={() => removeMaster(b)} className="grid h-7 w-7 place-items-center rounded-md text-[#dc2626] hover:bg-[#fef2f2] max-lg:h-10 max-lg:w-10 max-lg:bg-[#fef2f2]">{TRASH}</button>
+                          <IconAction kind="delete" label="Delete" onClick={() => removeMaster(b)} />
                         </>
                       )}
                       {Math.abs(b.available_kg - b.total_kg) >= 0.0005 && <span className="text-[11px] font-semibold text-[#a3a3a3]">{b.available_kg <= 0.0005 ? "Used up" : "In use"}</span>}
@@ -714,7 +715,7 @@ export function MixingClient({ allowed = ["master", "final"], perms = [] }: { al
                       <div className="flex items-center justify-end gap-1.5">
                         {fresh && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">New</span>}
                         {may("final", "delete") && dateOk(b.date ?? "") && Math.abs(b.available_kg - b.total_kg) < 0.0005 && (
-                          <button type="button" aria-label={`Delete ${b.batch_no}`} title="Delete" onClick={() => removeFinal(b)} className="grid h-7 w-7 place-items-center rounded-md text-[#dc2626] hover:bg-[#fef2f2] max-lg:h-10 max-lg:w-10 max-lg:bg-[#fef2f2]">{TRASH}</button>
+                          <IconAction kind="delete" label="Delete" onClick={() => removeFinal(b)} />
                         )}
                         {Math.abs(b.available_kg - b.total_kg) >= 0.0005 && <span className="text-[11px] font-semibold text-[#a3a3a3]">{b.available_kg <= 0.0005 ? "Used up" : "In use"}</span>}
                       </div>

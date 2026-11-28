@@ -1,5 +1,6 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
 import { Modal } from "@/components/modal";
 import { AddButton } from "@/components/add-button";
 import { Select } from "@/components/select";
@@ -257,23 +258,17 @@ export function BatchesClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin }
                 {(isAdmin || canDelete) && (
                   <span className="flex shrink-0 items-center">
                     {isAdmin && (
-                      <button type="button" aria-label={`Edit ${r.name || r.code}`} title="Edit formula" onClick={() => setEditing(r)} className="grid h-10 w-10 place-items-center rounded-lg text-[#404040] hover:bg-[#f4f4f5] active:bg-[#f4f4f5]">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                      </button>
+                      <IconAction kind="edit" label="Edit" onClick={() => setEditing(r)} />
                     )}
                     {canDelete && (
-                      <button
-                        type="button"
-                        aria-label={`Delete ${r.name || r.code}`}
-                        title="Delete formula"
+                      <IconAction
+                        kind="delete"
+                        label="Delete"
                         onClick={() => {
                           setDeleteError("");
                           setPending(r);
                         }}
-                        className="grid h-10 w-10 place-items-center rounded-lg text-[#dc2626] hover:bg-[#fef2f2] active:bg-[#fef2f2]"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /></svg>
-                      </button>
+                      />
                     )}
                   </span>
                 )}

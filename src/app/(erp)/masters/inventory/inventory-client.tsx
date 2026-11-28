@@ -1,5 +1,6 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
 import { Modal } from "@/components/modal";
 import { AddButton } from "@/components/add-button";
 import { Select } from "@/components/select";
@@ -363,32 +364,12 @@ export function InventoryClient({ isAdmin, canAdd = isAdmin, canDelete = isAdmin
                 <td className="erp-stack-full" data-label="Group">{r.group}</td>
                 <td className="erp-stack-full">
                   {(isAdmin || canDelete) && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-end gap-1">
                     {isAdmin && (
-                    <button
-                      type="button"
-                      className="erp-btn erp-btn-secondary mt-0"
-                      onClick={() => startEdit(r)}
-                    >
-                      Edit
-                    </button>
+                    <IconAction kind="edit" label="Edit" onClick={() => startEdit(r)} />
                     )}
                     {canDelete && (
-                    <button
-                      type="button"
-                      aria-label={`Delete ${r.name}`}
-                      title="Delete item"
-                      onClick={() => remove(r)}
-                      className="grid h-10 w-10 place-items-center rounded-lg bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M3 6h18" />
-                        <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                        <path d="M10 11v6" />
-                        <path d="M14 11v6" />
-                      </svg>
-                    </button>
+                    <IconAction kind="delete" label="Delete" onClick={() => remove(r)} />
                     )}
                     </div>
                   )}

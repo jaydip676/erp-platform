@@ -1,5 +1,6 @@
 "use client";
 
+import { IconAction } from "@/components/icon-action";
 import { createPortal } from "react-dom";
 import { ScrollLock } from "@/lib/use-scroll-lock";
 
@@ -700,7 +701,7 @@ export function PackingClient({ isAdmin, canDelete = isAdmin }: { isAdmin: boole
                     {isAdmin && ((canDelete && !fixed && rules.length > 1) || (i === rules.length - 1 && note)) && (
                       <div className="flex flex-wrap items-center gap-2">
                         {canDelete && !fixed && rules.length > 1 && (
-                          <button type="button" aria-label="Remove rule" title="Remove rule" onClick={() => removeRule(item.id, rule.key)} className="grid h-9 w-9 place-items-center rounded-lg bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]">×</button>
+                          <IconAction kind="delete" label="Remove rule" onClick={() => removeRule(item.id, rule.key)} />
                         )}
                         {i === rules.length - 1 && note && <span className={`basis-full text-xs font-semibold ${note.ok ? "text-emerald-700" : "text-red-700"}`}>{note.text}</span>}
                       </div>
