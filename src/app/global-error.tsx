@@ -8,7 +8,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   return (
     <html lang="en">
       <body className="bg-[#f7f7f7]">
-        <ErrorScreen title="Niva ERP could not load" text="Something went wrong. Try again in a moment." code={error.digest} onRetry={reset} />
+        <ErrorScreen title="Niva ERP (Demo) could not load" text="Something went wrong. Try again in a moment." code={error.digest} onRetry={reset} />
       </body>
     </html>
   );

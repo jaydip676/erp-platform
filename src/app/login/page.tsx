@@ -34,7 +34,7 @@ export default function LoginPage() {
     <div className="grid min-h-dvh place-items-center bg-[#f7f7f7] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <form onSubmit={login} className="w-[min(92vw,390px)] rounded-2xl border border-[#e5e5e5] bg-white p-8 shadow-sm">
         <div className="erp-brand">
-          NIVA <span>ERP</span>
+          NIVA <span>ERP</span> <span className="ml-0.5 align-middle text-[11px] font-semibold tracking-normal text-[#a3a3a3]">(Demo)</span>
         </div>
         <p className="text-sm text-[#737373]">Production & Inventory Management</p>
         <label className="erp-label">Username</label>

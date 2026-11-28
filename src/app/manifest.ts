@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Niva ERP",
+    name: "Niva ERP (Demo)",
     short_name: "Niva ERP",
     description: "Production & Inventory Management",
     start_url: "/dashboard",

@@ -90,7 +90,13 @@ export function SettingRule({ name, canEdit, readOnlyNote, className = "mb-4" }:
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   useEffect(() => {
-    api<Record<RuleKey, Setting>>("/api/settings").then((r) => setS(r[name])).catch(() => setS(null));
+    // The settings list also carries packing_auto_deduction as a plain true/false for older screens.
+    api<Record<string, Setting | boolean | string | null>>("/api/settings")
+      .then((r) => {
+        const v = r[name];
+        setS(typeof v === "boolean" ? { value: v, updated_at: null, updated_by: typeof r.updated_by === "string" ? r.updated_by : null } : (v as Setting) ?? null);
+      })
+      .catch(() => setS(null));
   }, [name]);
   const on = s?.value ?? name !== "pouch_allow_negative";
   const warn = on === rule.warnWhen;

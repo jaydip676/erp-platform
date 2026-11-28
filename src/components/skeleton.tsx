@@ -101,7 +101,7 @@ export function ShellSkeleton({ children }: { children?: React.ReactNode }) {
         <div className="flex items-center gap-2.5 px-2 py-1.5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#171717] text-sm font-bold text-white">N</span>
           <div className="leading-tight">
-            <div className="erp-brand">NIVA <span>ERP</span></div>
+            <div className="erp-brand">NIVA <span>ERP</span> <span className="ml-0.5 align-middle text-[11px] font-semibold tracking-normal text-[#a3a3a3]">(Demo)</span></div>
             <div className="text-[11px] text-[#8a8a8a]">Production & Inventory</div>
           </div>
         </div>

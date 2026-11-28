@@ -8,11 +8,11 @@ import { TopProgress } from "@/components/top-progress";
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Niva ERP",
+  title: "Niva ERP (Demo)",
   description: "Production & Inventory Management",
-  applicationName: "Niva ERP",
+  applicationName: "Niva ERP (Demo)",
   icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }], apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Niva ERP", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Niva ERP (Demo)", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

@@ -16,5 +16,5 @@ export const PAGE_TITLES: Record<string, string> = {
 const WIDE = ["/dashboard", "/masters"];
 
 const section = (pathname: string) => "/" + (pathname.split("/")[1] ?? "");
-export const pageTitle = (pathname: string, fallback = "Niva ERP") => PAGE_TITLES[section(pathname)] ?? fallback;
+export const pageTitle = (pathname: string, fallback = "Niva ERP (Demo)") => PAGE_TITLES[section(pathname)] ?? fallback;
 export const isWidePage = (pathname: string) => WIDE.includes(section(pathname));
